@@ -1,7 +1,7 @@
-// AppRouter.jsx - Updated with faster toast durations
+// AppRouter.jsx - Complete with all routes
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { Toaster } from 'react-hot-toast'; // ✅ Import Toaster
+import { Toaster } from 'react-hot-toast';
 
 // Layout & Protected Route
 import MainLayout from "../components/layout/MainLayout";
@@ -16,7 +16,9 @@ import Orders from "../Pages/admin/Orders";
 import Customer from "../Pages/common/Customers";
 import AddCustomer from "../Pages/common/AddCustomer";
 import CustomerDetails from "../Pages/common/CustomerDetails";
-
+import Staff from "../Pages/admin/Staff";
+import StaffDetails from "../Pages/admin/StaffDetails";
+import AddStaff from "../Pages/common/AddStaff";
 
 // Placeholders
 const ManagerDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Manager Panel Ready</div>;
@@ -26,7 +28,7 @@ const BankingPlaceholder = ({ title }) => <div className="p-8 font-black text-sl
 const Work = () => <div className="p-8 font-black text-slate-800 uppercase italic">Work Section</div>;
 const Products = () => <div className="p-8 font-black text-slate-800 uppercase italic">Products Section</div>;
 const Tailors = () => <div className="p-8 font-black text-slate-800 uppercase italic">Tailors Section</div>;
-const Manager = () => <div className="p-8 font-black text-slate-800 uppercase italic">Manager Section</div>;
+const ShopKeeper = () => <div className="p-8 font-black text-slate-800 uppercase italic">Shop Keeper Section</div>;
 
 export default function AppRouter() {
   const { user, token } = useSelector((state) => state.auth);
@@ -34,7 +36,7 @@ export default function AppRouter() {
 
   return (
     <BrowserRouter>
-      {/* ✅ Toaster with faster durations */}
+      {/* Toaster with fast durations */}
       <Toaster
         position="top-right"
         reverseOrder={false}
@@ -45,52 +47,44 @@ export default function AppRouter() {
           zIndex: 99999,
         }}
         toastOptions={{
-          // ⏱️ Default duration for all toasts
-          duration: 2000, // 2 seconds default
-          
+          duration: 2000,
           style: {
             background: '#fff',
             color: '#334155',
-            padding: '12px 16px', // Reduced padding
+            padding: '12px 16px',
             borderRadius: '10px',
             fontSize: '14px',
             fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)', // Lighter shadow
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             border: '1px solid #e2e8f0',
             maxWidth: '350px',
           },
-          
-          // Success toasts - quick!
           success: {
             icon: '✅',
-            duration: 1500, // 1.5 seconds only!
+            duration: 1500,
             style: {
               borderLeft: '4px solid #10b981',
             },
           },
-          
-          // Error toasts - a bit longer but still quick
           error: {
             icon: '❌',
-            duration: 2000, // 2 seconds
+            duration: 2000,
             style: {
               borderLeft: '4px solid #ef4444',
             },
           },
-          
-          // Loading toasts - also quick
           loading: {
             icon: '⏳',
-            duration: 2000, // 2 seconds
+            duration: 2000,
           },
         }}
       />
 
       <Routes>
-        {/* --- 🔓 PUBLIC ROUTES --- */}
+        {/* 🔓 PUBLIC ROUTES */}
         <Route path="/" element={<Login />} />
 
-        {/* --- 🛡️ ADMIN ROUTES --- */}
+        {/* 🛡️ ADMIN ROUTES (Full Access) */}
         <Route 
           path="/admin/*" 
           element={
@@ -99,21 +93,41 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         >
+          {/* Dashboard */}
           <Route path="dashboard" element={<AdminDashboard />} />
+          
+          {/* Orders */}
           <Route path="orders" element={<Orders />} />
+          
+          {/* Work */}
           <Route path="work" element={<Work />} />
+          
+          {/* Products */}
           <Route path="products" element={<Products />} />
+          
+          {/* Customers */}
           <Route path="customers" element={<Customer />} />
           <Route path="customers/:id" element={<CustomerDetails />} />
           <Route path="add-customer" element={<AddCustomer />} />
+          
+          {/* Staff Management */}
+          <Route path="staff" element={<Staff />} />
+          <Route path="staff/:id" element={<StaffDetails />} />
+          <Route path="add-staff" element={<AddStaff />} /> {/* ✅ Add Staff route */}
+          
+          {/* Shop Keeper */}
+          <Route path="shopkeeper" element={<ShopKeeper />} />
+          
+          {/* Tailors */}
           <Route path="tailors" element={<Tailors />} />
-          <Route path="manager" element={<Manager />} />
+          
+          {/* Banking */}
           <Route path="banking/overview" element={<BankingPlaceholder title="Admin Banking Overview" />} />
           <Route path="banking/income" element={<BankingPlaceholder title="Income Tracker" />} />
           <Route path="banking/expense" element={<BankingPlaceholder title="Expense Tracker" />} />
         </Route>
 
-        {/* --- 🛡️ STORE KEEPER ROUTES --- */}
+        {/* 🛡️ STORE KEEPER ROUTES */}
         <Route 
           path="/storekeeper/*" 
           element={
@@ -129,12 +143,12 @@ export default function AppRouter() {
           <Route path="customers" element={<Customer />} />
           <Route path="customers/:id" element={<CustomerDetails />} />
           <Route path="add-customer" element={<AddCustomer />} />
+          <Route path="shopkeeper" element={<ShopKeeper />} />
           <Route path="tailors" element={<Tailors />} />
-          <Route path="manager" element={<Manager />} />
           <Route path="banking/overview" element={<BankingPlaceholder title="Store Keeper Banking Overview" />} />
         </Route>
 
-        {/* --- 🛡️ CUTTING MASTER ROUTES --- */}
+        {/* 🛡️ CUTTING MASTER ROUTES (Restricted) */}
         <Route 
           path="/cuttingmaster/*" 
           element={
@@ -148,10 +162,10 @@ export default function AppRouter() {
           <Route path="work" element={<Work />} />
           <Route path="products" element={<Products />} />
           <Route path="tailors" element={<Tailors />} />
-          <Route path="manager" element={<Manager />} />
+          {/* No Staff or Shop Keeper for Cutting Master */}
         </Route>
 
-        {/* --- 🚨 404 REDIRECT --- */}
+        {/* 🚨 404 REDIRECT */}
         <Route 
           path="*" 
           element={
@@ -161,7 +175,6 @@ export default function AppRouter() {
               <Navigate 
                 to={
                   user?.role === "ADMIN" ? "/admin/dashboard" :
-                  user?.role === "MANAGER" ? "/manager/dashboard" :
                   user?.role === "STORE_KEEPER" ? "/storekeeper/dashboard" :
                   "/cuttingmaster/dashboard"
                 } 

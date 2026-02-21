@@ -1,4 +1,37 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import API from "../../app/axios";
+
+// 👤 Update Profile
+export const updateProfile = createAsyncThunk(
+  "auth/updateProfile",
+  async (profileData, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await API.put("/users/profile", profileData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data.user;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to update profile");
+    }
+  }
+);
+
+// 🔐 Change Password
+export const changePassword = createAsyncThunk(
+  "auth/changePassword",
+  async (passwordData, { rejectWithValue, getState }) => {
+    try {
+      const { token } = getState().auth;
+      const response = await API.put("/users/change-password", passwordData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to change password");
+    }
+  }
+);
 
 // Function to load state from localStorage
 const loadStateFromStorage = () => {
@@ -74,8 +107,51 @@ const authSlice = createSlice({
         console.error("Failed to clear auth state from localStorage:", error);
       }
     },
+
+    // Clear error
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Update Profile cases
+      .addCase(updateProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update user in state
+        state.user = { ...state.user, ...action.payload };
+        
+        // Update localStorage
+        try {
+          localStorage.setItem("user", JSON.stringify(state.user));
+          console.log("✅ Profile updated in localStorage");
+        } catch (error) {
+          console.error("Failed to update user in localStorage:", error);
+        }
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Change Password cases
+      .addCase(changePassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(changePassword.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(changePassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, clearError } = authSlice.actions;
 export default authSlice.reducer;

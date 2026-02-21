@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { 
   User, Phone, Mail, MapPin, Home, ChevronRight, X, Save, 
-  Building, Globe, BookOpen, AlertCircle 
+  Building, Globe, BookOpen, AlertCircle, Hash
 } from "lucide-react";
 import { createNewCustomer } from "../../features/customer/customerSlice";
 import showToast from "../../utils/toast";
@@ -11,7 +11,7 @@ import showToast from "../../utils/toast";
 export default function AddCustomer() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { loading } = useSelector((state) => state.customer);
+  const { loading, customers } = useSelector((state) => state.customer);
   const { user } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
@@ -137,7 +137,7 @@ export default function AddCustomer() {
     } catch (error) {
       console.error("Error creating customer:", error);
       
-      // ✅ Check for duplicate phone error message
+      // Check for duplicate phone error message
       const errorMsg = error.message || error.toString();
       if (errorMsg.includes("already exists") || 
           errorMsg.includes("duplicate") ||
@@ -164,6 +164,14 @@ export default function AddCustomer() {
   // Get full name for display
   const getFullName = () => {
     return `${formData.salutation} ${formData.firstName} ${formData.lastName}`.trim();
+  };
+
+  // Generate preview customer ID
+  const getCustomerIdPreview = () => {
+    const year = new Date().getFullYear();
+    const nextNumber = (customers?.length || 0) + 1;
+    const sequential = String(nextNumber).padStart(5, '0');
+    return `CUST-${year}-${sequential}`;
   };
 
   return (
@@ -199,6 +207,18 @@ export default function AddCustomer() {
           <div>
             <span className="text-xs text-blue-600 font-black uppercase tracking-wider">Preview</span>
             <p className="text-lg font-black text-slate-800">{getFullName()}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Customer ID Preview - Shows auto-generated ID */}
+      {formData.firstName && formData.contactNumber && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center gap-3">
+          <Hash size={20} className="text-purple-600" />
+          <div>
+            <span className="text-xs text-purple-600 font-black uppercase tracking-wider">Customer ID Preview</span>
+            <p className="text-lg font-mono font-bold text-purple-800">{getCustomerIdPreview()}</p>
+            <p className="text-xs text-purple-500 mt-1">Auto-generated on save</p>
           </div>
         </div>
       )}

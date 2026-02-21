@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { 
   User, Phone, Mail, MapPin, Calendar, ShoppingBag, 
   ChevronLeft, PlusCircle, AlertCircle, Edit, Trash2, 
-  Save, X
+  Save, X, Hash
 } from "lucide-react";
 import { fetchCustomerById, updateCustomer, deleteCustomer } from "../../features/customer/customerSlice";
 import showToast from "../../utils/toast";
@@ -410,6 +410,19 @@ export default function CustomerDetails() {
             ) : (
               <div className="flex-1">
                 <h1 className="text-3xl font-black text-slate-800 mb-2">{customerName}</h1>
+                
+                {/* Customer ID - NEW */}
+                {currentCustomer.customerId && (
+                  <div className="flex items-center gap-3 text-slate-600 mb-4">
+                    <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
+                      <Hash size={16} className="text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 font-bold uppercase">Customer ID</p>
+                      <p className="font-mono font-bold text-indigo-600">{currentCustomer.customerId}</p>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   {/* Phone */}

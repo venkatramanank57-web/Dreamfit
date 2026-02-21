@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, UserPlus, ShoppingBag, User, MapPin, Phone, Mail, Calendar, PlusCircle, Eye } from "lucide-react";
+import { Search, UserPlus, ShoppingBag, User, MapPin, Phone, Mail, Calendar, PlusCircle, Eye, Hash } from "lucide-react"; // ✅ Added Hash icon for ID
 import { useDispatch, useSelector } from "react-redux";
 import { searchCustomerByPhone, clearCustomerState, fetchAllCustomers } from "../../features/customer/customerSlice";
 import { useNavigate } from "react-router-dom";
@@ -7,6 +7,7 @@ import showToast from "../../utils/toast";
 
 export default function Customers() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState("phone"); // ✅ "phone" or "id"
   
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -30,41 +31,68 @@ export default function Customers() {
     }
   }, [error]);
 
-  // 🔍 Search Logic - Filters the list in real-time
+  // 🔍 Search Logic
   const handleSearch = (e) => {
     e.preventDefault();
     
-    // Remove any non-digit characters and check length
-    const cleanPhone = searchTerm.replace(/\D/g, '');
-    
-    if (cleanPhone.length > 0 && cleanPhone.length !== 10) {
-      return showToast.error("Enter valid 10-digit number");
-    }
-    
-    // If valid phone, search - otherwise show all customers
-    if (cleanPhone.length === 10) {
-      dispatch(searchCustomerByPhone(cleanPhone));
+    if (searchType === "phone") {
+      // Phone search - remove non-digits and check length
+      const cleanPhone = searchTerm.replace(/\D/g, '');
+      
+      if (cleanPhone.length > 0 && cleanPhone.length !== 10) {
+        return showToast.error("Enter valid 10-digit number");
+      }
+      
+      if (cleanPhone.length === 10) {
+        dispatch(searchCustomerByPhone(cleanPhone));
+      } else {
+        dispatch(clearCustomerState());
+        dispatch(fetchAllCustomers());
+      }
     } else {
-      dispatch(clearCustomerState());
-      dispatch(fetchAllCustomers());
+      // ID search - just pass the term as is
+      if (searchTerm.trim()) {
+        // You'll need to add this action to your slice
+        // dispatch(searchCustomerById(searchTerm));
+        showToast.info("ID search coming soon!");
+      } else {
+        dispatch(clearCustomerState());
+        dispatch(fetchAllCustomers());
+      }
     }
   };
 
-  // Handle input change with phone formatting
-  const handlePhoneChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-    setSearchTerm(value);
+  // Handle input change
+  const handleInputChange = (e) => {
+    const value = e.target.value;
     
-    // If search is cleared, show all customers
-    if (value.length === 0) {
-      dispatch(clearCustomerState());
-      dispatch(fetchAllCustomers());
+    if (searchType === "phone") {
+      // Only digits for phone
+      const cleaned = value.replace(/\D/g, '').slice(0, 10);
+      setSearchTerm(cleaned);
+      
+      if (cleaned.length === 0) {
+        dispatch(clearCustomerState());
+        dispatch(fetchAllCustomers());
+      }
+    } else {
+      // Any characters for ID
+      setSearchTerm(value);
+      
+      if (value.length === 0) {
+        dispatch(clearCustomerState());
+        dispatch(fetchAllCustomers());
+      }
     }
   };
 
   // Filter customers based on search
-  const filteredCustomers = searchTerm.length === 10 && customers?.length > 0
-    ? customers.filter(c => c.phone?.includes(searchTerm))
+  const filteredCustomers = searchTerm && customers?.length > 0
+    ? customers.filter(c => 
+        searchType === "phone" 
+          ? c.phone?.includes(searchTerm)
+          : c.customerId?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
     : customers;
 
   // Format date
@@ -75,10 +103,7 @@ export default function Customers() {
 
   // Get customer full name
   const getCustomerName = (customer) => {
-    // If name field exists, use it
     if (customer.name) return customer.name;
-    
-    // Otherwise combine fields
     return `${customer.salutation || ''} ${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown';
   };
 
@@ -107,16 +132,46 @@ export default function Customers() {
         </div>
 
         <div className="flex gap-3">
+          {/* Search Type Toggle */}
+          <div className="flex bg-slate-100 p-1 rounded-2xl">
+            <button
+              onClick={() => setSearchType("phone")}
+              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+                searchType === "phone" 
+                  ? "bg-white text-blue-600 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Phone size={16} className="inline mr-1" />
+              Phone
+            </button>
+            <button
+              onClick={() => setSearchType("id")}
+              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+                searchType === "id" 
+                  ? "bg-white text-blue-600 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Hash size={16} className="inline mr-1" />
+              ID
+            </button>
+          </div>
+
           <form onSubmit={handleSearch} className="flex gap-2">
             <div className="relative">
-              <Search className="absolute left-4 top-3.5 text-slate-400" size={20} />
+              {searchType === "phone" ? (
+                <Phone className="absolute left-4 top-3.5 text-slate-400" size={20} />
+              ) : (
+                <Hash className="absolute left-4 top-3.5 text-slate-400" size={20} />
+              )}
               <input 
                 type="text" 
-                placeholder="Search by Phone Number..." 
+                placeholder={searchType === "phone" ? "Search by Phone..." : "Search by Customer ID..."}
                 className="pl-12 pr-6 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 w-80 font-bold transition-all"
                 value={searchTerm} 
-                onChange={handlePhoneChange}
-                maxLength="10"
+                onChange={handleInputChange}
+                maxLength={searchType === "phone" ? 10 : undefined}
               />
             </div>
             <button 
@@ -143,7 +198,7 @@ export default function Customers() {
       {searchTerm && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Search size={18} className="text-blue-600" />
+            {searchType === "phone" ? <Phone size={18} className="text-blue-600" /> : <Hash size={18} className="text-blue-600" />}
             <span className="text-sm font-medium text-slate-700">
               Search results for <span className="font-black text-blue-600">{searchTerm}</span>
             </span>
@@ -190,8 +245,18 @@ export default function Customers() {
                         </span>
                       </div>
                       <div className="flex-1">
-                        {/* ✅ Customer Name displayed prominently */}
+                        {/* Customer Name */}
                         <h3 className="font-black text-slate-800 text-lg mb-1">{customerName}</h3>
+                        
+                        {/* Customer ID - NEW */}
+                        {customer.customerId && (
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Hash size={12} className="text-blue-500" />
+                            <span className="text-xs font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                              {customer.customerId}
+                            </span>
+                          </div>
+                        )}
                         
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                           <span className="flex items-center gap-1.5 text-sm bg-slate-100 px-3 py-1 rounded-full">
@@ -199,7 +264,6 @@ export default function Customers() {
                             <span className="font-medium text-slate-700">{customer.phone}</span>
                           </span>
                           
-                          {/* ✅ Email is now smaller and less prominent */}
                           {customer.email && (
                             <span className="flex items-center gap-1.5 text-xs text-slate-400">
                               <Mail size={10} /> {customer.email}
@@ -257,7 +321,7 @@ export default function Customers() {
             <User size={48} className="text-slate-300 mx-auto mb-4" />
             <p className="text-slate-400 font-black text-xl">No Customers Found</p>
             <p className="text-slate-300 mt-2">
-              {searchTerm ? `No customer with phone ${searchTerm}` : 'Register your first customer to get started'}
+              {searchTerm ? `No customer with ${searchType === "phone" ? "phone" : "ID"} ${searchTerm}` : 'Register your first customer to get started'}
             </p>
             <button
               onClick={goToAddCustomer}

@@ -2,6 +2,13 @@
 import mongoose from "mongoose";
 
 const customerSchema = new mongoose.Schema({
+  // ✅ Auto-generated Customer ID
+  customerId: {
+    type: String,
+    unique: true,
+    index: true,
+  },
+
   // Personal Information
   salutation: {
     type: String,
@@ -80,27 +87,51 @@ const customerSchema = new mongoose.Schema({
     default: 0
   }
 }, { 
-  timestamps: true,
-  // This will run before saving to maintain compatibility
-  pre: {
-    save: function() {
-      // Combine name for backward compatibility
-      this.name = `${this.salutation} ${this.firstName} ${this.lastName || ''}`.trim();
+  timestamps: true
+});
+
+// ✅ Pre-save middleware to generate customerId
+customerSchema.pre("save", async function(next) {
+  try {
+    // Generate customer ID if not exists
+    if (!this.customerId) {
+      // Get the count of existing customers
+      const count = await mongoose.model("Customer").countDocuments();
       
-      // Combine address for backward compatibility
-      const addressParts = [
-        this.addressLine1,
-        this.addressLine2,
-        this.city,
-        this.state,
-        this.pincode
-      ].filter(Boolean);
-      this.address = addressParts.join(', ');
+      // Generate ID in format: CUST-2024-00001
+      const year = new Date().getFullYear();
+      const sequential = String(count + 1).padStart(5, "0");
+      
+      // Option 1: Year-based ID (CUST-2024-00001)
+      this.customerId = `CUST-${year}-${sequential}`;
+      
+      // Option 2: Timestamp based (CUST-1708423456789)
+      // this.customerId = `CUST${Date.now()}`;
+      
+      // Option 3: Random alphanumeric (CUST-ABC123XYZ)
+      // this.customerId = `CUST${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     }
+
+    // Combine name for backward compatibility
+    this.name = `${this.salutation} ${this.firstName} ${this.lastName || ''}`.trim();
+    
+    // Combine address for backward compatibility
+    const addressParts = [
+      this.addressLine1,
+      this.addressLine2,
+      this.city,
+      this.state,
+      this.pincode
+    ].filter(Boolean);
+    this.address = addressParts.join(', ');
+
+    next();
+  } catch (error) {
+    next(error);
   }
 });
 
-// Virtual for full name (optional)
+// Virtual for full name
 customerSchema.virtual('fullName').get(function() {
   return `${this.salutation} ${this.firstName} ${this.lastName || ''}`.trim();
 });

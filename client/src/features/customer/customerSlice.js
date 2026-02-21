@@ -6,7 +6,8 @@ import {
   getAllCustomersApi,
   getCustomerByIdApi,
   updateCustomerApi,
-  deleteCustomerApi
+  deleteCustomerApi,
+  searchCustomerByCustomerIdApi // ✅ Add this to your customerApi.js
 } from "./customerApi";
 
 // 🔍 Search Customer by Phone
@@ -15,6 +16,18 @@ export const searchCustomerByPhone = createAsyncThunk(
   async (phone, { rejectWithValue }) => {
     try {
       return await searchCustomerApi(phone);
+    } catch (err) {
+      return rejectWithValue(err.response?.data || { message: "Search failed" });
+    }
+  }
+);
+
+// 🔍 Search Customer by Customer ID (NEW)
+export const searchCustomerByCustomerId = createAsyncThunk(
+  "customer/searchById",
+  async (customerId, { rejectWithValue }) => {
+    try {
+      return await searchCustomerByCustomerIdApi(customerId);
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: "Search failed" });
     }
@@ -45,7 +58,7 @@ export const fetchAllCustomers = createAsyncThunk(
   }
 );
 
-// 👤 Fetch Customer by ID
+// 👤 Fetch Customer by MongoDB ID
 export const fetchCustomerById = createAsyncThunk(
   "customer/fetchById",
   async (id, { rejectWithValue }) => {
@@ -100,7 +113,7 @@ const customerSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Search Actions
+      // Search by Phone Actions
       .addCase(searchCustomerByPhone.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -117,6 +130,23 @@ const customerSlice = createSlice({
         state.currentCustomer = null;
       })
       
+      // Search by Customer ID Actions (NEW)
+      .addCase(searchCustomerByCustomerId.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.currentCustomer = null;
+      })
+      .addCase(searchCustomerByCustomerId.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentCustomer = action.payload;
+        state.error = null;
+      })
+      .addCase(searchCustomerByCustomerId.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message || "Search failed";
+        state.currentCustomer = null;
+      })
+      
       // Create Actions
       .addCase(createNewCustomer.pending, (state) => {
         state.loading = true;
@@ -125,8 +155,8 @@ const customerSlice = createSlice({
       .addCase(createNewCustomer.fulfilled, (state, action) => {
         state.loading = false;
         state.success = true;
-        state.currentCustomer = action.payload;
-        state.customers = [action.payload, ...state.customers];
+        state.currentCustomer = action.payload.customer || action.payload;
+        state.customers = [state.currentCustomer, ...state.customers];
         state.error = null;
       })
       .addCase(createNewCustomer.rejected, (state, action) => {
@@ -149,7 +179,7 @@ const customerSlice = createSlice({
         state.error = action.payload?.message || "Failed to fetch customers";
       })
 
-      // Fetch Customer By ID
+      // Fetch Customer By MongoDB ID
       .addCase(fetchCustomerById.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -172,11 +202,11 @@ const customerSlice = createSlice({
       })
       .addCase(updateCustomer.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentCustomer = action.payload;
+        state.currentCustomer = action.payload.customer || action.payload;
         // Update in customers list
-        const index = state.customers.findIndex(c => c._id === action.payload._id);
+        const index = state.customers.findIndex(c => c._id === state.currentCustomer._id);
         if (index !== -1) {
-          state.customers[index] = action.payload;
+          state.customers[index] = state.currentCustomer;
         }
         state.success = true;
         state.error = null;

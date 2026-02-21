@@ -1,22 +1,28 @@
 // features/customer/customerApi.js
 import API from "../../app/axios";
 
-// Search customer by phone
+// 🔍 Search customer by phone - ✅ FIXED URL
 export const searchCustomerApi = async (phone) => {
-  const response = await API.get(`/customers/search/${phone}`);
+  const response = await API.get(`/customers/search/phone/${phone}`); // Changed from "/search/${phone}" to "/search/phone/${phone}"
   return response.data;
 };
 
-// 🆕 Create new customer - FIXED MAPPING
+// 🔍 Search customer by Customer ID (NEW)
+export const searchCustomerByCustomerIdApi = async (customerId) => {
+  const response = await API.get(`/customers/search/id/${customerId}`);
+  return response.data;
+};
+
+// 🆕 Create new customer
 export const createCustomerApi = async (customerData) => {
-  console.log("📦 Original customer data:", customerData); // Debug log
+  console.log("📦 Original customer data:", customerData);
   
   // Map frontend field names to what backend expects
   const apiData = {
     salutation: customerData.salutation,
     firstName: customerData.firstName,
     lastName: customerData.lastName || "",
-    contactNumber: customerData.phone, // Make sure this matches backend field name
+    contactNumber: customerData.phone,
     whatsappNumber: customerData.whatsapp || customerData.phone,
     email: customerData.email || "",
     addressLine1: customerData.address?.line1 || "",
@@ -27,7 +33,7 @@ export const createCustomerApi = async (customerData) => {
     notes: customerData.notes || ""
   };
   
-  console.log("📦 Sending to backend:", apiData); // Debug log
+  console.log("📦 Sending to backend:", apiData);
   
   try {
     const response = await API.post("/customers/create", apiData);
@@ -38,19 +44,19 @@ export const createCustomerApi = async (customerData) => {
   }
 };
 
-// Get all customers
+// 📋 Get all customers
 export const getAllCustomersApi = async () => {
   const response = await API.get("/customers/all");
   return response.data;
 };
 
-// Get customer by ID
+// 👤 Get customer by MongoDB ID
 export const getCustomerByIdApi = async (id) => {
   const response = await API.get(`/customers/${id}`);
   return response.data;
 };
 
-// Update customer
+// ✏️ Update customer
 export const updateCustomerApi = async (id, customerData) => {
   // Map frontend field names to backend field names for update
   const apiData = {
@@ -72,7 +78,7 @@ export const updateCustomerApi = async (id, customerData) => {
   return response.data;
 };
 
-// Delete customer
+// ❌ Delete customer
 export const deleteCustomerApi = async (id) => {
   const response = await API.delete(`/customers/${id}`);
   return response.data;

@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, ShoppingCart, Scissors, Users, Landmark, 
   Package, Settings, Bell, Search, ChevronDown, 
-  ChevronRight, LogOut, UserCircle, Briefcase
+  ChevronRight, LogOut, UserCircle, Briefcase, Store
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../features/auth/authSlice";
@@ -28,7 +28,7 @@ export default function MainLayout() {
   
   // ✅ Updated Permissions:
   // Admin: Everything
-  // Store Keeper: Banking, Customers, Products (but no Manager)
+  // Store Keeper: Banking, Customers, Products, Shop Keeper
   // Cutting Master: Only Dashboard, Work, Tailors (NO Orders)
 
   // Banking access - Admin AND Store Keeper
@@ -37,8 +37,11 @@ export default function MainLayout() {
   // Customers access - Admin and Store Keeper only
   const canViewCustomers = isAdmin || isStoreKeeper;
 
-  // Manager access - Admin only
-  const canViewManager = isAdmin;
+  // Staff access (formerly Manager) - Admin only
+  const canViewStaff = isAdmin;
+
+  // Shop Keeper access - Admin and Store Keeper
+  const canViewShopKeeper = isAdmin || isStoreKeeper;
 
   // Products access - Admin and Store Keeper only
   const canViewProducts = isAdmin || isStoreKeeper;
@@ -64,7 +67,7 @@ export default function MainLayout() {
       { id: 'orders', icon: ShoppingCart, label: 'Orders', path: `/${rolePath}/orders`, show: canViewOrders },
       
       // Work - Everyone can see
-      { id: 'work', icon: Briefcase, label: 'Work', path: `/${rolePath}/work`, show: true },
+      { id: 'work', icon: Briefcase, label: 'Works', path: `/${rolePath}/work`, show: true },
       
       // Products - Admin and Store Keeper only
       { id: 'products', icon: Package, label: 'Products', path: `/${rolePath}/products`, show: canViewProducts },
@@ -72,14 +75,17 @@ export default function MainLayout() {
       // Customers - Admin and Store Keeper only
       { id: 'customers', icon: Users, label: 'Customers', path: `/${rolePath}/customers`, show: canViewCustomers },
       
+      // Shop Keeper - Admin and Store Keeper (NEW)
+      { id: 'shopkeeper', icon: Store, label: 'Shop Keeper', path: `/${rolePath}/shopkeeper`, show: canViewShopKeeper },
+      
       // Banking - Admin and Store Keeper both can see
       { id: 'banking', icon: Landmark, label: 'Banking', path: '#', show: canViewBanking, isDropdown: true },
       
       // Tailors Panels - Everyone can see (including Cutting Master)
       { id: 'tailors', icon: Scissors, label: 'Tailors Panels', path: '/tailors', show: true },
       
-      // Manager - Admin only
-      { id: 'manager', icon: UserCircle, label: 'Manager', path: `/${rolePath}/manager`, show: canViewManager },
+      // Staff - Admin only (renamed from Manager)
+      { id: 'staff', icon: UserCircle, label: 'Staffs', path: `/${rolePath}/staff`, show: canViewStaff },
     ];
     
     return items.filter(item => item.show);
