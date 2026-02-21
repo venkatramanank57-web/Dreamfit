@@ -1,4 +1,4 @@
-// AppRouter.jsx - Complete with all routes
+// AppRouter.jsx - Complete with all routes and product details
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { Toaster } from 'react-hot-toast';
@@ -20,13 +20,19 @@ import Staff from "../Pages/admin/Staff";
 import StaffDetails from "../Pages/admin/StaffDetails";
 import AddStaff from "../Pages/common/AddStaff";
 
+// Product Management Components
+import Products from "../Pages/admin/Products";              // ✅ Main Products page
+import FabricDetail from "../Pages/admin/FabricDetail";      // ✅ Fabric Detail page
+import CategoryDetail from "../Pages/admin/CategoryDetail";  // ✅ Category Detail page
+import ItemDetail from "../Pages/admin/ItemDetail";         // ✅ Item Detail page
+import EditFabric from "../Pages/admin/EditFabric";
+
 // Placeholders
 const ManagerDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Manager Panel Ready</div>;
 const StoreKeeperDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Store Keeper Panel Ready</div>;
 const CuttingMasterDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Master Work List</div>;
 const BankingPlaceholder = ({ title }) => <div className="p-8 font-black text-slate-800 uppercase italic font-sans">{title} Section</div>;
 const Work = () => <div className="p-8 font-black text-slate-800 uppercase italic">Work Section</div>;
-const Products = () => <div className="p-8 font-black text-slate-800 uppercase italic">Products Section</div>;
 const Tailors = () => <div className="p-8 font-black text-slate-800 uppercase italic">Tailors Section</div>;
 const ShopKeeper = () => <div className="p-8 font-black text-slate-800 uppercase italic">Shop Keeper Section</div>;
 
@@ -102,8 +108,14 @@ export default function AppRouter() {
           {/* Work */}
           <Route path="work" element={<Work />} />
           
-          {/* Products */}
+          {/* Products Management - Main Page */}
           <Route path="products" element={<Products />} />
+          
+          {/* Product Detail Pages */}
+          <Route path="fabrics/:id" element={<FabricDetail />} />        {/* ✅ Fabric Detail */}
+          <Route path="categories/:id" element={<CategoryDetail />} />   {/* ✅ Category Detail */}
+          <Route path="items/:id" element={<ItemDetail />} />  
+          <Route path="fabrics/edit/:id" element={<EditFabric />} />          {/* ✅ Item Detail */}
           
           {/* Customers */}
           <Route path="customers" element={<Customer />} />
@@ -113,7 +125,7 @@ export default function AppRouter() {
           {/* Staff Management */}
           <Route path="staff" element={<Staff />} />
           <Route path="staff/:id" element={<StaffDetails />} />
-          <Route path="add-staff" element={<AddStaff />} /> {/* ✅ Add Staff route */}
+          <Route path="add-staff" element={<AddStaff />} />
           
           {/* Shop Keeper */}
           <Route path="shopkeeper" element={<ShopKeeper />} />
@@ -140,6 +152,9 @@ export default function AppRouter() {
           <Route path="orders" element={<Orders />} />
           <Route path="work" element={<Work />} />
           <Route path="products" element={<Products />} />
+          <Route path="fabrics/:id" element={<FabricDetail />} />        {/* ✅ Store Keeper can view details */}
+          <Route path="categories/:id" element={<CategoryDetail />} />   {/* ✅ Store Keeper can view details */}
+          <Route path="items/:id" element={<ItemDetail />} />            {/* ✅ Store Keeper can view details */}
           <Route path="customers" element={<Customer />} />
           <Route path="customers/:id" element={<CustomerDetails />} />
           <Route path="add-customer" element={<AddCustomer />} />
@@ -162,7 +177,7 @@ export default function AppRouter() {
           <Route path="work" element={<Work />} />
           <Route path="products" element={<Products />} />
           <Route path="tailors" element={<Tailors />} />
-          {/* No Staff or Shop Keeper for Cutting Master */}
+          {/* No detail pages for Cutting Master */}
         </Route>
 
         {/* 🚨 404 REDIRECT */}

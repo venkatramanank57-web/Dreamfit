@@ -5,13 +5,19 @@ import { persistReducer } from "redux-persist";
 // SLICES
 import authReducer from "../features/auth/authSlice";
 import customerReducer from "../features/customer/customerSlice";
-import userReducer from "../features/user/userSlice"; // ✅ 1. Import User Reducer
+import userReducer from "../features/user/userSlice";
+import fabricReducer from "../features/fabric/fabricSlice";      // ✅ Fabric Reducer
+import categoryReducer from "../features/category/categorySlice"; // ✅ Category Reducer
+import itemReducer from "../features/item/itemSlice";            // ✅ Item Reducer
 
 // Combine all reducers
 const rootReducer = combineReducers({
   auth: authReducer,
   customer: customerReducer,
-  user: userReducer, // ✅ 2. Add User Reducer here
+  user: userReducer,
+  fabric: fabricReducer,      // ✅ Add Fabric Reducer
+  category: categoryReducer,  // ✅ Add Category Reducer
+  item: itemReducer,          // ✅ Add Item Reducer
 });
 
 // Persist config

@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, "Email is required"],
-      unique: true,
+      unique: true,        // ✅ This creates an index automatically
       lowercase: true,
       trim: true,
     },
@@ -77,10 +77,10 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Index for better search performance
-userSchema.index({ email: 1 });
-userSchema.index({ role: 1 });
-userSchema.index({ isActive: 1 });
+// ❌ REMOVE THESE DUPLICATE INDEXES
+// userSchema.index({ email: 1 });
+// userSchema.index({ role: 1 });
+// userSchema.index({ isActive: 1 });
 
 const User = mongoose.model("User", userSchema);
 
