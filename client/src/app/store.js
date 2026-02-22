@@ -9,6 +9,9 @@ import userReducer from "../features/user/userSlice";
 import fabricReducer from "../features/fabric/fabricSlice";      // ✅ Fabric Reducer
 import categoryReducer from "../features/category/categorySlice"; // ✅ Category Reducer
 import itemReducer from "../features/item/itemSlice";            // ✅ Item Reducer
+import sizeTemplateReducer from "../features/sizeTemplate/sizeTemplateSlice";
+import sizeFieldReducer from "../features/sizeField/sizeFieldSlice";
+
 
 // Combine all reducers
 const rootReducer = combineReducers({
@@ -18,6 +21,8 @@ const rootReducer = combineReducers({
   fabric: fabricReducer,      // ✅ Add Fabric Reducer
   category: categoryReducer,  // ✅ Add Category Reducer
   item: itemReducer,          // ✅ Add Item Reducer
+  sizeTemplate: sizeTemplateReducer,
+sizeField: sizeFieldReducer,
 });
 
 // Persist config

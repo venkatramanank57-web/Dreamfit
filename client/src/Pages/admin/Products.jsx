@@ -15,6 +15,7 @@ import {
   Upload,
   Eye,
   Power,
+  EyeOff,
 } from "lucide-react";
 import {
   fetchAllFabrics,
@@ -46,11 +47,15 @@ export default function Products() {
   const { fabrics } = useSelector((state) => state.fabric);
   const { categories } = useSelector((state) => state.category);
   const { items } = useSelector((state) => state.item);
+  const { user } = useSelector((state) => state.auth); // Get user for role check
 
   // UI state
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [showInactive, setShowInactive] = useState(false); // Toggle for inactive items
+
+  const isAdmin = user?.role === "ADMIN"; // Check if user is Admin
 
   // Form states
   const [fabricForm, setFabricForm] = useState({
@@ -207,12 +212,14 @@ export default function Products() {
     }
   };
 
-  const handleToggleStatus = async (id) => {
+  // ✅ Toggle status with proper message
+  const handleToggleStatus = async (id, currentStatus) => {
     try {
       if (activeTab === "fabric") {
         await dispatch(toggleFabricStatus(id)).unwrap();
-        showToast.success("Status toggled");
+        showToast.success(`Fabric ${currentStatus ? 'deactivated' : 'activated'} successfully`);
       }
+      // Add similar for categories and items when you have toggle functions
     } catch (error) {
       showToast.error("Failed to toggle status");
     }
@@ -246,6 +253,19 @@ export default function Products() {
     }
   };
 
+  // Filter items based on showInactive toggle (for Admin)
+  const filteredFabrics = isAdmin && showInactive 
+    ? fabrics 
+    : fabrics?.filter(f => f.isActive !== false);
+  
+  const filteredCategories = isAdmin && showInactive 
+    ? categories 
+    : categories?.filter(c => c.isActive !== false);
+  
+  const filteredItems = isAdmin && showInactive 
+    ? items 
+    : items?.filter(i => i.isActive !== false);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
@@ -259,7 +279,7 @@ export default function Products() {
         </p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs with Counts */}
       <div className="flex gap-2 border-b border-slate-200 bg-white p-4 rounded-t-2xl">
         {["fabric", "category", "item"].map((tab) => (
           <button
@@ -277,7 +297,7 @@ export default function Products() {
                 : tab === "category"
                   ? "📁 Categories"
                   : "🧵 Items"}
-              {/* ✅ Show count for each tab */}
+              {/* Show count for each tab */}
               <span
                 className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
                   activeTab === tab
@@ -298,7 +318,7 @@ export default function Products() {
 
       {/* Content Area */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        {/* Header with Add Button */}
+        {/* Header with Add Button and Inactive Toggle */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {activeTab === "fabric" && (
@@ -316,40 +336,63 @@ export default function Products() {
                 : activeTab === "category"
                   ? "Categories"
                   : "Items"}
+              {showInactive && (
+                <span className="ml-3 text-sm font-normal text-purple-600">
+                  (Showing inactive)
+                </span>
+              )}
             </h2>
           </div>
 
-          {/* Category Filter for Items */}
-          {activeTab === "item" && (
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
-            >
-              <option value="">All Categories</option>
-              {categories?.map((cat) => (
-                <option key={cat._id} value={cat._id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Category Filter for Items */}
+            {activeTab === "item" && (
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+              >
+                <option value="">All Categories</option>
+                {categories?.map((cat) => (
+                  <option key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            )}
 
-          <button
-            onClick={() => {
-              resetForms();
-              setShowModal(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
-          >
-            <Plus size={20} />
-            Add{" "}
-            {activeTab === "fabric"
-              ? "Fabric"
-              : activeTab === "category"
-                ? "Category"
-                : "Item"}
-          </button>
+            {/* Admin Only: Show Inactive Toggle */}
+            {isAdmin && (
+              <button
+                onClick={() => setShowInactive(!showInactive)}
+                className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${
+                  showInactive 
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' 
+                    : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                }`}
+                title={showInactive ? 'Showing all items' : 'Show inactive items'}
+              >
+                {showInactive ? <Eye size={18} /> : <EyeOff size={18} />}
+                {showInactive ? 'All Items' : 'Hide Inactive'}
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                resetForms();
+                setShowModal(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
+            >
+              <Plus size={20} />
+              Add{" "}
+              {activeTab === "fabric"
+                ? "Fabric"
+                : activeTab === "category"
+                  ? "Category"
+                  : "Item"}
+            </button>
+          </div>
         </div>
 
         {/* Lists */}
@@ -357,10 +400,12 @@ export default function Products() {
           {/* Fabrics List */}
           {activeTab === "fabric" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {fabrics?.map((fabric) => (
+              {filteredFabrics?.map((fabric) => (
                 <div
                   key={fabric._id}
-                  className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all"
+                  className={`bg-white rounded-xl border overflow-hidden hover:shadow-lg transition-all ${
+                    !fabric.isActive ? 'border-orange-200 opacity-75' : 'border-slate-200'
+                  }`}
                 >
                   <div className="relative h-48 bg-slate-100">
                     {fabric.imageUrl ? (
@@ -381,11 +426,16 @@ export default function Products() {
                     <div className="absolute top-3 right-3 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">
                       ₹{fabric.pricePerMeter}/m
                     </div>
+                    {!fabric.isActive && (
+                      <div className="absolute top-3 left-3 bg-orange-500 text-white px-2 py-1 rounded-full text-xs font-bold">
+                        Inactive
+                      </div>
+                    )}
                   </div>
                   <div className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-black text-slate-800 text-lg">
+                        <h3 className={`font-black text-lg ${!fabric.isActive ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
                           {fabric.name}
                         </h3>
                         <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
@@ -402,9 +452,9 @@ export default function Products() {
                           <Eye size={16} />
                         </button>
                         <button
-                          onClick={() => handleToggleStatus(fabric._id)}
+                          onClick={() => handleToggleStatus(fabric._id, fabric.isActive)}
                           className={`p-2 rounded-lg ${fabric.isActive ? "bg-green-100 text-green-600 hover:bg-green-200" : "bg-orange-100 text-orange-600 hover:bg-orange-200"}`}
-                          title={fabric.isActive ? "Active" : "Inactive"}
+                          title={fabric.isActive ? "Deactivate" : "Activate"}
                         >
                           <Power size={16} />
                         </button>
@@ -433,19 +483,26 @@ export default function Products() {
           {/* Categories List */}
           {activeTab === "category" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {categories?.map((category) => (
+              {filteredCategories?.map((category) => (
                 <div
                   key={category._id}
-                  className="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md"
+                  className={`bg-slate-50 rounded-xl p-4 border hover:shadow-md ${
+                    !category.isActive ? 'border-orange-200 opacity-75' : 'border-slate-200'
+                  }`}
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-black text-slate-800">
+                      <h3 className={`font-black ${!category.isActive ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
                         {category.name}
                       </h3>
                       <p className="text-xs text-slate-400 mt-1">
                         ID: {category._id.slice(-6)}
                       </p>
+                      {!category.isActive && (
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full mt-1 inline-block">
+                          Inactive
+                        </span>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -476,17 +533,26 @@ export default function Products() {
           {/* Items List */}
           {activeTab === "item" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {items?.map((item) => (
+              {filteredItems?.map((item) => (
                 <div
                   key={item._id}
-                  className="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md"
+                  className={`bg-slate-50 rounded-xl p-4 border hover:shadow-md ${
+                    !item.isActive ? 'border-orange-200 opacity-75' : 'border-slate-200'
+                  }`}
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-black text-slate-800">{item.name}</h3>
+                      <h3 className={`font-black ${!item.isActive ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                        {item.name}
+                      </h3>
                       <p className="text-sm text-slate-600 mt-1">
                         Category: {item.category?.name}
                       </p>
+                      {!item.isActive && (
+                        <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full mt-1 inline-block">
+                          Inactive
+                        </span>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button

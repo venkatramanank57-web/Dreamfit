@@ -11,6 +11,8 @@ import userRoutes from "./routes/user.routes.js";
 import fabricRoutes from "./routes/fabric.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import itemRoutes from "./routes/item.routes.js";
+import sizeTemplateRoutes from "./routes/sizeTemplate.routes.js";  // ✅ Size Template Routes
+import sizeFieldRoutes from "./routes/sizeField.routes.js";        // ✅ Size Field Routes
 
 // Load env variables
 dotenv.config();
@@ -63,6 +65,12 @@ app.use("/api/categories", categoryRoutes);
 
 // 🧵 ITEM ROUTES - Protected
 app.use("/api/items", itemRoutes);
+
+// 📏 SIZE TEMPLATE ROUTES - Protected
+app.use("/api/size-templates", sizeTemplateRoutes);
+
+// 📐 SIZE FIELD ROUTES - Protected
+app.use("/api/size-fields", sizeFieldRoutes);
 
 // ==================== 404 HANDLER ====================
 app.use((req, res) => {
@@ -144,5 +152,19 @@ app.listen(PORT, () => {
   console.log(`   🔒 DEL  /api/items/:id      - Delete item`);
   console.log(`   🔒 PATCH /api/items/:id/toggle - Toggle item status`);
   
-  console.log(`\n✅ Total Routes: 28 endpoints\n`);
+  // Size Template Routes
+  console.log(`\n📏 SIZE TEMPLATE ROUTES:`);
+  console.log(`   🔒 POST /api/size-templates        - Create template`);
+  console.log(`   🔒 GET  /api/size-templates        - Get all templates (with pagination)`);
+  console.log(`   🔒 GET  /api/size-templates/:id    - Get template by ID`);
+  console.log(`   🔒 PUT  /api/size-templates/:id    - Update template`);
+  console.log(`   🔒 DEL  /api/size-templates/:id    - Delete template`);
+  console.log(`   🔒 PATCH /api/size-templates/:id/toggle - Toggle template status`);
+  
+  // Size Field Routes
+  console.log(`\n📐 SIZE FIELD ROUTES:`);
+  console.log(`   🔒 GET  /api/size-fields           - Get all size fields`);
+  console.log(`   👑 POST /api/size-fields           - Create size field (Admin only)`);
+  
+  console.log(`\n✅ Total Routes: 35 endpoints\n`);
 });

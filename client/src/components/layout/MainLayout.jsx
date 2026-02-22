@@ -73,7 +73,7 @@ export default function MainLayout() {
       { id: 'work', icon: Briefcase, label: 'Works', path: `/${rolePath}/work`, show: true },
       
       // Measurement - Admin, Store Keeper, and Cutting Master (NEW - Simple Link, No Dropdown)
-      { id: 'measurement', icon: Ruler, label: 'Measurement', path: `/${rolePath}/measurement`, show: canViewMeasurement },
+      { id: 'measurements', icon: Ruler, label: 'Measurements', path: `/${rolePath}/measurements`, show: canViewMeasurement },
       
       // Products - Admin and Store Keeper only
       { id: 'products', icon: Package, label: 'Products', path: `/${rolePath}/products`, show: canViewProducts },

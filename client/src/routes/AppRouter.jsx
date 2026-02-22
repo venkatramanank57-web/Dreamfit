@@ -1,7 +1,7 @@
 // AppRouter.jsx - Complete with all routes and product details
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { Toaster } from 'react-hot-toast';
+import { Toaster } from "react-hot-toast";
 
 // Layout & Protected Route
 import MainLayout from "../components/layout/MainLayout";
@@ -21,30 +21,54 @@ import StaffDetails from "../Pages/admin/StaffDetails";
 import AddStaff from "../Pages/common/AddStaff";
 
 // Product Management Components
-import Products from "../Pages/admin/Products";              // ✅ Main Products page
-import FabricDetail from "../Pages/admin/FabricDetail";      // ✅ Fabric Detail page
-import CategoryDetail from "../Pages/admin/CategoryDetail";  // ✅ Category Detail page
-import ItemDetail from "../Pages/admin/ItemDetail";         // ✅ Item Detail page
+import Products from "../Pages/admin/Products";
+import FabricDetail from "../Pages/admin/FabricDetail";
+import CategoryDetail from "../Pages/admin/CategoryDetail";
+import ItemDetail from "../Pages/admin/ItemDetail";
 import EditFabric from "../Pages/admin/EditFabric";
 
-// Measurement Components (NEW)
-// import Measurement from "../Pages/common/Measurement";      
-// import MeasurementTemplates from "../Pages/measurement/MeasurementTemplates";
-// import MeasurementStandards from "../Pages/measurement/MeasurementStandards";
-// import MeasurementHistory from "../Pages/measurement/MeasurementHistory";
-// import CustomerMeasurements from "../Pages/measurement/CustomerMeasurements";
-// import AssignMeasurements from "../Pages/measurement/AssignMeasurements";
-// import MeasurementTracking from "../Pages/measurement/MeasurementTracking";
+// Measurement Components
+import Measurements from "../Pages/admin/Measurements";
+import NewTemplate from "../Pages/admin/NewTemplate";
+import TemplateDetails from "../Pages/admin/TemplateDetails";
+import EditTemplate from "../Pages/admin/EditTemplate";
 
 // Placeholders
-const ManagerDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Manager Panel Ready</div>;
-const StoreKeeperDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Store Keeper Panel Ready</div>;
-const CuttingMasterDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Master Work List</div>;
-const BankingPlaceholder = ({ title }) => <div className="p-8 font-black text-slate-800 uppercase italic font-sans">{title} Section</div>;
-const Work = () => <div className="p-8 font-black text-slate-800 uppercase italic">Work Section</div>;
-const Tailors = () => <div className="p-8 font-black text-slate-800 uppercase italic">Tailors Section</div>;
-const ShopKeeper = () => <div className="p-8 font-black text-slate-800 uppercase italic">Shop Keeper Section</div>;
-const Measurement=()=> <div className="p-8 font-black text-slate-800 uppercase italic">Measurement Section</div>;
+const ManagerDashboard = () => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    Manager Panel Ready
+  </div>
+);
+const StoreKeeperDashboard = () => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    Store Keeper Panel Ready
+  </div>
+);
+const CuttingMasterDashboard = () => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    Master Work List
+  </div>
+);
+const BankingPlaceholder = ({ title }) => (
+  <div className="p-8 font-black text-slate-800 uppercase italic font-sans">
+    {title} Section
+  </div>
+);
+const Work = () => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    Work Section
+  </div>
+);
+const Tailors = () => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    Tailors Section
+  </div>
+);
+const ShopKeeper = () => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    Shop Keeper Section
+  </div>
+);
 
 export default function AppRouter() {
   const { user, token } = useSelector((state) => state.auth);
@@ -65,32 +89,32 @@ export default function AppRouter() {
         toastOptions={{
           duration: 2000,
           style: {
-            background: '#fff',
-            color: '#334155',
-            padding: '12px 16px',
-            borderRadius: '10px',
-            fontSize: '14px',
-            fontWeight: '500',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            border: '1px solid #e2e8f0',
-            maxWidth: '350px',
+            background: "#fff",
+            color: "#334155",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            fontSize: "14px",
+            fontWeight: "500",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            border: "1px solid #e2e8f0",
+            maxWidth: "350px",
           },
           success: {
-            icon: '✅',
+            icon: "✅",
             duration: 1500,
             style: {
-              borderLeft: '4px solid #10b981',
+              borderLeft: "4px solid #10b981",
             },
           },
           error: {
-            icon: '❌',
+            icon: "❌",
             duration: 2000,
             style: {
-              borderLeft: '4px solid #ef4444',
+              borderLeft: "4px solid #ef4444",
             },
           },
           loading: {
-            icon: '⏳',
+            icon: "⏳",
             duration: 2000,
           },
         }}
@@ -101,8 +125,8 @@ export default function AppRouter() {
         <Route path="/" element={<Login />} />
 
         {/* 🛡️ ADMIN ROUTES (Full Access) */}
-        <Route 
-          path="/admin/*" 
+        <Route
+          path="/admin/*"
           element={
             <ProtectedRoute allowedRoles={["ADMIN"]}>
               <MainLayout />
@@ -118,20 +142,20 @@ export default function AppRouter() {
           {/* Work */}
           <Route path="work" element={<Work />} />
           
-          {/* Measurement - Admin gets full access (NEW) */}
-          <Route path="measurement" element={<Measurement />} />
-          {/* <Route path="measurement/templates" element={<MeasurementTemplates />} />
-          <Route path="measurement/standards" element={<MeasurementStandards />} />
-          <Route path="measurement/history" element={<MeasurementHistory />} /> */}
+          {/* Measurement - Admin gets full access */}
+          <Route path="measurements" element={<Measurements />} />
+          <Route path="measurements/new" element={<NewTemplate />} />
+          <Route path="measurements/:id" element={<TemplateDetails />} />
+          <Route path="measurements/edit/:id" element={<EditTemplate />} />
           
-          {/* Products Management - Main Page */}
+          {/* Products Management */}
           <Route path="products" element={<Products />} />
           
           {/* Product Detail Pages */}
-          <Route path="fabrics/:id" element={<FabricDetail />} />        {/* ✅ Fabric Detail */}
-          <Route path="categories/:id" element={<CategoryDetail />} />   {/* ✅ Category Detail */}
-          <Route path="items/:id" element={<ItemDetail />} />  
-          <Route path="fabrics/edit/:id" element={<EditFabric />} />          {/* ✅ Item Detail */}
+          <Route path="fabrics/:id" element={<FabricDetail />} />
+          <Route path="categories/:id" element={<CategoryDetail />} />
+          <Route path="items/:id" element={<ItemDetail />} />
+          <Route path="fabrics/edit/:id" element={<EditFabric />} />
           
           {/* Customers */}
           <Route path="customers" element={<Customer />} />
@@ -156,8 +180,8 @@ export default function AppRouter() {
         </Route>
 
         {/* 🛡️ STORE KEEPER ROUTES */}
-        <Route 
-          path="/storekeeper/*" 
+        <Route
+          path="/storekeeper/*"
           element={
             <ProtectedRoute allowedRoles={["STORE_KEEPER"]}>
               <MainLayout />
@@ -168,15 +192,16 @@ export default function AppRouter() {
           <Route path="orders" element={<Orders />} />
           <Route path="work" element={<Work />} />
           
-          {/* Measurement - Store Keeper access (NEW) */}
-          <Route path="measurement" element={<Measurement />} />
-          {/* <Route path="measurement/templates" element={<MeasurementTemplates />} />
-          <Route path="measurement/customer" element={<CustomerMeasurements />} /> */}
+          {/* ✅ Measurement - Store Keeper access (ADD THESE) */}
+          <Route path="measurements" element={<Measurements />} />
+          <Route path="measurements/new" element={<NewTemplate />} />
+          <Route path="measurements/:id" element={<TemplateDetails />} />
+          <Route path="measurements/edit/:id" element={<EditTemplate />} />
           
           <Route path="products" element={<Products />} />
-          <Route path="fabrics/:id" element={<FabricDetail />} />        {/* ✅ Store Keeper can view details */}
-          <Route path="categories/:id" element={<CategoryDetail />} />   {/* ✅ Store Keeper can view details */}
-          <Route path="items/:id" element={<ItemDetail />} />            {/* ✅ Store Keeper can view details */}
+          <Route path="fabrics/:id" element={<FabricDetail />} />
+          <Route path="categories/:id" element={<CategoryDetail />} />
+          <Route path="items/:id" element={<ItemDetail />} />
           <Route path="customers" element={<Customer />} />
           <Route path="customers/:id" element={<CustomerDetails />} />
           <Route path="add-customer" element={<AddCustomer />} />
@@ -186,8 +211,8 @@ export default function AppRouter() {
         </Route>
 
         {/* 🛡️ CUTTING MASTER ROUTES (Restricted) */}
-        <Route 
-          path="/cuttingmaster/*" 
+        <Route
+          path="/cuttingmaster/*"
           element={
             <ProtectedRoute allowedRoles={["CUTTING_MASTER"]}>
               <MainLayout />
@@ -198,34 +223,34 @@ export default function AppRouter() {
           <Route path="orders" element={<Orders />} />
           <Route path="work" element={<Work />} />
           
-          {/* Measurement - Cutting Master access (NEW) */}
-          <Route path="measurement" element={<Measurement />} />
-          {/* <Route path="measurement/templates" element={<MeasurementTemplates />} />
-          <Route path="measurement/assign" element={<AssignMeasurements />} />
-          <Route path="measurement/tracking" element={<MeasurementTracking />} /> */}
+          {/* ✅ Measurement - Cutting Master access (ADD THESE) */}
+          <Route path="measurements" element={<Measurements />} />
+          <Route path="measurements/:id" element={<TemplateDetails />} />
+          {/* Note: Cutting Master can view but not create/edit */}
           
           <Route path="products" element={<Products />} />
           <Route path="tailors" element={<Tailors />} />
-          {/* No detail pages for Cutting Master */}
         </Route>
 
         {/* 🚨 404 REDIRECT */}
-        <Route 
-          path="*" 
+        <Route
+          path="*"
           element={
             !isAuthenticated ? (
               <Navigate to="/" replace />
             ) : (
-              <Navigate 
+              <Navigate
                 to={
-                  user?.role === "ADMIN" ? "/admin/dashboard" :
-                  user?.role === "STORE_KEEPER" ? "/storekeeper/dashboard" :
-                  "/cuttingmaster/dashboard"
-                } 
-                replace 
+                  user?.role === "ADMIN"
+                    ? "/admin/dashboard"
+                    : user?.role === "STORE_KEEPER"
+                      ? "/storekeeper/dashboard"
+                      : "/cuttingmaster/dashboard"
+                }
+                replace
               />
             )
-          } 
+          }
         />
       </Routes>
     </BrowserRouter>

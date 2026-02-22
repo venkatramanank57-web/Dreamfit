@@ -256,6 +256,7 @@ const fabricSlice = createSlice({
         const index = state.fabrics.findIndex(f => f._id === action.meta.arg);
         if (index !== -1) {
           state.fabrics[index].isActive = !state.fabrics[index].isActive;
+          console.log(`✅ Fabric ${state.fabrics[index].name} is now ${state.fabrics[index].isActive ? 'Active' : 'Inactive'}`);
         }
       })
       .addCase(toggleFabricStatus.rejected, (state, action) => {
