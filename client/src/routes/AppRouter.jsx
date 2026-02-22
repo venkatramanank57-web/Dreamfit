@@ -27,6 +27,15 @@ import CategoryDetail from "../Pages/admin/CategoryDetail";  // ✅ Category Det
 import ItemDetail from "../Pages/admin/ItemDetail";         // ✅ Item Detail page
 import EditFabric from "../Pages/admin/EditFabric";
 
+// Measurement Components (NEW)
+// import Measurement from "../Pages/common/Measurement";      
+// import MeasurementTemplates from "../Pages/measurement/MeasurementTemplates";
+// import MeasurementStandards from "../Pages/measurement/MeasurementStandards";
+// import MeasurementHistory from "../Pages/measurement/MeasurementHistory";
+// import CustomerMeasurements from "../Pages/measurement/CustomerMeasurements";
+// import AssignMeasurements from "../Pages/measurement/AssignMeasurements";
+// import MeasurementTracking from "../Pages/measurement/MeasurementTracking";
+
 // Placeholders
 const ManagerDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Manager Panel Ready</div>;
 const StoreKeeperDashboard = () => <div className="p-8 font-black text-slate-800 uppercase italic">Store Keeper Panel Ready</div>;
@@ -35,6 +44,7 @@ const BankingPlaceholder = ({ title }) => <div className="p-8 font-black text-sl
 const Work = () => <div className="p-8 font-black text-slate-800 uppercase italic">Work Section</div>;
 const Tailors = () => <div className="p-8 font-black text-slate-800 uppercase italic">Tailors Section</div>;
 const ShopKeeper = () => <div className="p-8 font-black text-slate-800 uppercase italic">Shop Keeper Section</div>;
+const Measurement=()=> <div className="p-8 font-black text-slate-800 uppercase italic">Measurement Section</div>;
 
 export default function AppRouter() {
   const { user, token } = useSelector((state) => state.auth);
@@ -108,6 +118,12 @@ export default function AppRouter() {
           {/* Work */}
           <Route path="work" element={<Work />} />
           
+          {/* Measurement - Admin gets full access (NEW) */}
+          <Route path="measurement" element={<Measurement />} />
+          {/* <Route path="measurement/templates" element={<MeasurementTemplates />} />
+          <Route path="measurement/standards" element={<MeasurementStandards />} />
+          <Route path="measurement/history" element={<MeasurementHistory />} /> */}
+          
           {/* Products Management - Main Page */}
           <Route path="products" element={<Products />} />
           
@@ -151,6 +167,12 @@ export default function AppRouter() {
           <Route path="dashboard" element={<StoreKeeperDashboard />} />
           <Route path="orders" element={<Orders />} />
           <Route path="work" element={<Work />} />
+          
+          {/* Measurement - Store Keeper access (NEW) */}
+          <Route path="measurement" element={<Measurement />} />
+          {/* <Route path="measurement/templates" element={<MeasurementTemplates />} />
+          <Route path="measurement/customer" element={<CustomerMeasurements />} /> */}
+          
           <Route path="products" element={<Products />} />
           <Route path="fabrics/:id" element={<FabricDetail />} />        {/* ✅ Store Keeper can view details */}
           <Route path="categories/:id" element={<CategoryDetail />} />   {/* ✅ Store Keeper can view details */}
@@ -175,6 +197,13 @@ export default function AppRouter() {
           <Route path="dashboard" element={<CuttingMasterDashboard />} />
           <Route path="orders" element={<Orders />} />
           <Route path="work" element={<Work />} />
+          
+          {/* Measurement - Cutting Master access (NEW) */}
+          <Route path="measurement" element={<Measurement />} />
+          {/* <Route path="measurement/templates" element={<MeasurementTemplates />} />
+          <Route path="measurement/assign" element={<AssignMeasurements />} />
+          <Route path="measurement/tracking" element={<MeasurementTracking />} /> */}
+          
           <Route path="products" element={<Products />} />
           <Route path="tailors" element={<Tailors />} />
           {/* No detail pages for Cutting Master */}

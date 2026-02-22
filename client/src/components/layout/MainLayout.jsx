@@ -3,7 +3,7 @@ import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, ShoppingCart, Scissors, Users, Landmark, 
   Package, Settings, Bell, Search, ChevronDown, 
-  ChevronRight, LogOut, UserCircle, Briefcase, Store
+  ChevronRight, LogOut, UserCircle, Briefcase, Store, Ruler
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../features/auth/authSlice";
@@ -49,6 +49,9 @@ export default function MainLayout() {
   // Orders access - Admin and Store Keeper only (NOT Cutting Master)
   const canViewOrders = isAdmin || isStoreKeeper;
 
+  // Measurement access - Admin, Store Keeper, and Cutting Master (NEW)
+  const canViewMeasurement = isAdmin || isStoreKeeper || isCuttingMaster;
+
   // Current active link style check
   const isActive = (path) => location.pathname.includes(path);
 
@@ -69,22 +72,25 @@ export default function MainLayout() {
       // Work - Everyone can see
       { id: 'work', icon: Briefcase, label: 'Works', path: `/${rolePath}/work`, show: true },
       
+      // Measurement - Admin, Store Keeper, and Cutting Master (NEW - Simple Link, No Dropdown)
+      { id: 'measurement', icon: Ruler, label: 'Measurement', path: `/${rolePath}/measurement`, show: canViewMeasurement },
+      
       // Products - Admin and Store Keeper only
       { id: 'products', icon: Package, label: 'Products', path: `/${rolePath}/products`, show: canViewProducts },
       
       // Customers - Admin and Store Keeper only
       { id: 'customers', icon: Users, label: 'Customers', path: `/${rolePath}/customers`, show: canViewCustomers },
       
-      // Shop Keeper - Admin and Store Keeper (NEW)
+      // Shop Keeper - Admin and Store Keeper
       { id: 'shopkeeper', icon: Store, label: 'Shop Keeper', path: `/${rolePath}/shopkeeper`, show: canViewShopKeeper },
       
-      // Banking - Admin and Store Keeper both can see
+      // Banking - Admin and Store Keeper both can see (Dropdown)
       { id: 'banking', icon: Landmark, label: 'Banking', path: '#', show: canViewBanking, isDropdown: true },
       
       // Tailors Panels - Everyone can see (including Cutting Master)
       { id: 'tailors', icon: Scissors, label: 'Tailors Panels', path: '/tailors', show: true },
       
-      // Staff - Admin only (renamed from Manager)
+      // Staff - Admin only
       { id: 'staff', icon: UserCircle, label: 'Staffs', path: `/${rolePath}/staff`, show: canViewStaff },
     ];
     
@@ -226,7 +232,7 @@ export default function MainLayout() {
                     )}
                   </div>
                 ) : (
-                  // Regular Navigation Links
+                  // Regular Navigation Links (including Measurement)
                   <Link 
                     to={item.path} 
                     className={`nav-link ${isActive(item.id) ? 'active-link' : ''}`}
