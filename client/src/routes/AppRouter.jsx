@@ -33,6 +33,13 @@ import NewTemplate from "../Pages/admin/NewTemplate";
 import TemplateDetails from "../Pages/admin/TemplateDetails";
 import EditTemplate from "../Pages/admin/EditTemplate";
 
+// ✅ ORDER MANAGEMENT COMPONENTS
+import NewOrder from "../Pages/admin/NewOrder";
+import OrderDetails from "../Pages/admin/OrderDetails";
+import WorkPage from "../Pages/admin/WorkPage";
+import GarmentDetails from "../Pages/admin/GarmentDetails";
+import EditOrder from "../Pages/admin/EditOrder";
+
 // Placeholders
 const ManagerDashboard = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
@@ -136,10 +143,20 @@ export default function AppRouter() {
           {/* Dashboard */}
           <Route path="dashboard" element={<AdminDashboard />} />
           
-          {/* Orders */}
+          {/* Orders Management */}
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/new" element={<NewOrder />} />
+          <Route path="orders/:id" element={<OrderDetails />} />
+          <Route path="orders/edit/:id" element={<EditOrder />} />
           
-          {/* Work */}
+          {/* Work Management */}
+          <Route path="works" element={<WorkPage />} />
+          <Route path="works/:id" element={<WorkPage />} />
+          
+          {/* Garment Details */}
+          <Route path="garments/:id" element={<GarmentDetails />} />
+          
+          {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
           {/* Measurement - Admin gets full access */}
@@ -189,10 +206,24 @@ export default function AppRouter() {
           }
         >
           <Route path="dashboard" element={<StoreKeeperDashboard />} />
+          
+          {/* Orders Management - Store Keeper can manage orders */}
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/new" element={<NewOrder />} />
+          <Route path="orders/:id" element={<OrderDetails />} />
+          <Route path="orders/edit/:id" element={<EditOrder />} />
+          
+          {/* Work Management - Store Keeper can view all works */}
+          <Route path="works" element={<WorkPage />} />
+          <Route path="works/:id" element={<WorkPage />} />
+          
+          {/* Garment Details */}
+          <Route path="garments/:id" element={<GarmentDetails />} />
+          
+          {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
-          {/* ✅ Measurement - Store Keeper access (ADD THESE) */}
+          {/* Measurement - Store Keeper access */}
           <Route path="measurements" element={<Measurements />} />
           <Route path="measurements/new" element={<NewTemplate />} />
           <Route path="measurements/:id" element={<TemplateDetails />} />
@@ -220,13 +251,24 @@ export default function AppRouter() {
           }
         >
           <Route path="dashboard" element={<CuttingMasterDashboard />} />
+          
+          {/* Orders - Cutting Master can view orders but not edit */}
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/:id" element={<OrderDetails />} />
+          
+          {/* Work Management - Cutting Master can see and update their work */}
+          <Route path="works" element={<WorkPage />} />
+          <Route path="works/:id" element={<WorkPage />} />
+          
+          {/* Garment Details - Cutting Master can view garment details */}
+          <Route path="garments/:id" element={<GarmentDetails />} />
+          
+          {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
-          {/* ✅ Measurement - Cutting Master access (ADD THESE) */}
+          {/* Measurement - Cutting Master can view only */}
           <Route path="measurements" element={<Measurements />} />
           <Route path="measurements/:id" element={<TemplateDetails />} />
-          {/* Note: Cutting Master can view but not create/edit */}
           
           <Route path="products" element={<Products />} />
           <Route path="tailors" element={<Tailors />} />

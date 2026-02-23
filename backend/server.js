@@ -11,8 +11,13 @@ import userRoutes from "./routes/user.routes.js";
 import fabricRoutes from "./routes/fabric.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import itemRoutes from "./routes/item.routes.js";
-import sizeTemplateRoutes from "./routes/sizeTemplate.routes.js";  // ✅ Size Template Routes
-import sizeFieldRoutes from "./routes/sizeField.routes.js";        // ✅ Size Field Routes
+import sizeTemplateRoutes from "./routes/sizeTemplate.routes.js";
+import sizeFieldRoutes from "./routes/sizeField.routes.js";
+
+// ✅ NEW ORDER MANAGEMENT ROUTES
+import orderRoutes from "./routes/order.routes.js";
+import garmentRoutes from "./routes/garment.routes.js";
+import workRoutes from "./routes/work.routes.js";
 
 // Load env variables
 dotenv.config();
@@ -71,6 +76,11 @@ app.use("/api/size-templates", sizeTemplateRoutes);
 
 // 📐 SIZE FIELD ROUTES - Protected
 app.use("/api/size-fields", sizeFieldRoutes);
+
+// 📦 ORDER MANAGEMENT ROUTES - Protected
+app.use("/api/orders", orderRoutes);
+app.use("/api/garments", garmentRoutes);
+app.use("/api/works", workRoutes);
 
 // ==================== 404 HANDLER ====================
 app.use((req, res) => {
@@ -166,5 +176,29 @@ app.listen(PORT, () => {
   console.log(`   🔒 GET  /api/size-fields           - Get all size fields`);
   console.log(`   👑 POST /api/size-fields           - Create size field (Admin only)`);
   
-  console.log(`\n✅ Total Routes: 35 endpoints\n`);
+  // ✅ NEW ORDER MANAGEMENT ROUTES
+  console.log(`\n📦 ORDER MANAGEMENT ROUTES:`);
+  console.log(`\n   🔥 ORDER ROUTES:`);
+  console.log(`   🔒 POST /api/orders              - Create new order`);
+  console.log(`   🔒 GET  /api/orders              - Get all orders (with filters)`);
+  console.log(`   🔒 GET  /api/orders/:id          - Get order by ID`);
+  console.log(`   🔒 PATCH /api/orders/:id/status  - Update order status`);
+  console.log(`   🔒 DEL  /api/orders/:id          - Delete order`);
+  
+  console.log(`\n   🧵 GARMENT ROUTES:`);
+  console.log(`   🔒 POST /api/garments/order/:orderId - Create garment (with images)`);
+  console.log(`   🔒 GET  /api/garments/order/:orderId - Get garments by order`);
+  console.log(`   🔒 GET  /api/garments/:id         - Get garment by ID`);
+  console.log(`   🔒 PUT  /api/garments/:id         - Update garment`);
+  console.log(`   🔒 DEL  /api/garments/:id         - Delete garment`);
+  
+  console.log(`\n   ⚙️ WORK ROUTES:`);
+  console.log(`   🔒 POST /api/works                - Create work assignment`);
+  console.log(`   🔒 GET  /api/works                - Get all works`);
+  console.log(`   🔒 GET  /api/works/user/:userId   - Get works by user (Cutting Master)`);
+  console.log(`   🔒 GET  /api/works/:id            - Get work by ID`);
+  console.log(`   🔒 PATCH /api/works/:id/status    - Update work status`);
+  console.log(`   🔒 DEL  /api/works/:id            - Delete work`);
+  
+  console.log(`\n✅ Total Routes: 45+ endpoints\n`);
 });

@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { 
   User, Phone, Mail, MapPin, Calendar, ShoppingBag, 
   ChevronLeft, PlusCircle, AlertCircle, Edit, Trash2, 
-  Save, X, Hash
+  Save, X, Hash, MessageCircle, FileText, Star
 } from "lucide-react";
 import { fetchCustomerById, updateCustomer, deleteCustomer } from "../../features/customer/customerSlice";
 import showToast from "../../utils/toast";
@@ -49,7 +49,7 @@ export default function CustomerDetails() {
     }
   }, [id, dispatch]);
 
-  // ✅ FIXED: Separate useEffect for form data - only depends on currentCustomer
+  // Load customer data into form
   useEffect(() => {
     if (currentCustomer) {
       setFormData({
@@ -67,14 +67,14 @@ export default function CustomerDetails() {
         notes: currentCustomer.notes || ""
       });
     }
-  }, [currentCustomer]); // ✅ Removed isEditing dependency
+  }, [currentCustomer]);
 
   const handleBack = () => {
     navigate(`/${rolePath}/customers`);
   };
 
   const handleCreateOrder = () => {
-    navigate(`/${rolePath}/create-order`, { 
+    navigate(`/${rolePath}/orders/new`, { 
       state: { customer: currentCustomer } 
     });
   };
@@ -85,7 +85,6 @@ export default function CustomerDetails() {
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    // Reset form data to current customer values
     if (currentCustomer) {
       setFormData({
         salutation: currentCustomer.salutation || "Mr.",
@@ -120,7 +119,6 @@ export default function CustomerDetails() {
 
   const handleUpdate = async () => {
     try {
-      // Prepare update data
       const updateData = {
         salutation: formData.salutation,
         firstName: formData.firstName,
@@ -139,7 +137,7 @@ export default function CustomerDetails() {
       await dispatch(updateCustomer({ id, customerData: updateData })).unwrap();
       showToast.success("Customer updated successfully! ✅");
       setIsEditing(false);
-      dispatch(fetchCustomerById(id)); // Refresh data
+      dispatch(fetchCustomerById(id));
     } catch (error) {
       showToast.error(error.message || "Failed to update customer");
     }
@@ -161,11 +159,12 @@ export default function CustomerDetails() {
     return date.toLocaleDateString('en-GB', { 
       day: '2-digit', 
       month: 'long', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
   };
+
+  // Check if customer is VIP
+  const isVIP = currentCustomer?.notes?.toLowerCase().includes('vip');
 
   if (loading) {
     return (
@@ -192,9 +191,20 @@ export default function CustomerDetails() {
     );
   }
 
-  // Get customer name
-  const customerName = currentCustomer.name || 
-    `${currentCustomer.salutation || ''} ${currentCustomer.firstName || ''} ${currentCustomer.lastName || ''}`.trim();
+  // Get customer full name
+  const customerFullName = () => {
+    let name = '';
+    if (currentCustomer.firstName || currentCustomer.lastName) {
+      const firstName = currentCustomer.firstName || '';
+      const lastName = currentCustomer.lastName || '';
+      name = `${firstName} ${lastName}`.trim();
+    }
+    
+    if (currentCustomer.salutation && name) {
+      return `${currentCustomer.salutation} ${name}`.trim();
+    }
+    return name || 'Customer';
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -209,7 +219,6 @@ export default function CustomerDetails() {
         </button>
         
         <div className="flex items-center gap-3">
-          {/* Edit and Delete buttons for Admin and Store Keeper */}
           {canEdit && !isEditing && (
             <>
               <button
@@ -231,7 +240,6 @@ export default function CustomerDetails() {
             </>
           )}
           
-          {/* Create Order Button */}
           <button
             onClick={handleCreateOrder}
             className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-green-500/30 transition-all hover:scale-105"
@@ -242,267 +250,282 @@ export default function CustomerDetails() {
         </div>
       </div>
 
-      {/* Customer Profile Card */}
+      {/* Main Content */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-8">
-          <div className="flex items-start gap-6">
-            {/* Avatar */}
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
-              <span className="text-4xl font-black">
-                {customerName?.charAt(0) || 'C'}
-              </span>
-            </div>
-
-            {/* Customer Info - Edit Mode or View Mode */}
-            {isEditing ? (
-              <div className="flex-1 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">Salutation</label>
-                    <select
-                      name="salutation"
-                      value={formData.salutation}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Mr.">Mr.</option>
-                      <option value="Mrs.">Mrs.</option>
-                      <option value="Ms.">Ms.</option>
-                      <option value="Dr.">Dr.</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">First Name</label>
-                    <input
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">Last Name</label>
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      maxLength="10"
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">WhatsApp</label>
-                    <input
-                      type="tel"
-                      name="whatsappNumber"
-                      value={formData.whatsappNumber}
-                      onChange={handleChange}
-                      maxLength="10"
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">Address Line 1</label>
-                    <input
-                      type="text"
-                      name="addressLine1"
-                      value={formData.addressLine1}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">Address Line 2</label>
-                    <input
-                      type="text"
-                      name="addressLine2"
-                      value={formData.addressLine2}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">City</label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">State</label>
-                    <input
-                      type="text"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-500 mb-1">Pincode</label>
-                    <input
-                      type="text"
-                      name="pincode"
-                      value={formData.pincode}
-                      onChange={handleChange}
-                      maxLength="6"
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-
+        {isEditing ? (
+          /* EDIT MODE */
+          <div className="p-8">
+            <h2 className="text-2xl font-black text-slate-800 mb-6">Edit Customer</h2>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Notes</label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Salutation</label>
+                  <select
+                    name="salutation"
+                    value={formData.salutation}
                     onChange={handleChange}
-                    rows="2"
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Mr.">Mr.</option>
+                    <option value="Mrs.">Mrs.</option>
+                    <option value="Ms.">Ms.</option>
+                    <option value="Dr.">Dr.</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
-                <div className="flex items-center gap-3 pt-4">
-                  <button
-                    onClick={handleUpdate}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2"
-                  >
-                    <Save size={18} />
-                    Save Changes
-                  </button>
-                  <button
-                    onClick={handleCancelEdit}
-                    className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center gap-2"
-                  >
-                    <X size={18} />
-                    Cancel
-                  </button>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    maxLength="10"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">WhatsApp</label>
+                  <input
+                    type="tel"
+                    name="whatsappNumber"
+                    value={formData.whatsappNumber}
+                    onChange={handleChange}
+                    maxLength="10"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
-            ) : (
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Address Line 1</label>
+                  <input
+                    type="text"
+                    name="addressLine1"
+                    value={formData.addressLine1}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Address Line 2</label>
+                  <input
+                    type="text"
+                    name="addressLine2"
+                    value={formData.addressLine2}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">City</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">State</label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Pincode</label>
+                  <input
+                    type="text"
+                    name="pincode"
+                    value={formData.pincode}
+                    onChange={handleChange}
+                    maxLength="6"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-500 mb-1">Notes</label>
+                <textarea
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  rows="3"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-4">
+                <button
+                  onClick={handleUpdate}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2"
+                >
+                  <Save size={18} />
+                  Save Changes
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center gap-2"
+                >
+                  <X size={18} />
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* VIEW MODE */
+          <div className="p-8">
+            {/* VIP Badge */}
+            {isVIP && (
+              <div className="mb-4">
+                <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                  <Star size={12} />
+                  VIP CUSTOMER
+                </span>
+              </div>
+            )}
+
+            {/* Header with Avatar and Basic Info */}
+            <div className="flex flex-col md:flex-row gap-6 mb-8">
+              <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                <span className="text-4xl font-black">
+                  {customerFullName().charAt(0) || 'C'}
+                </span>
+              </div>
+              
               <div className="flex-1">
-                <h1 className="text-3xl font-black text-slate-800 mb-2">{customerName}</h1>
+                <div className="flex flex-wrap items-center gap-3 mb-2">
+                  <h1 className="text-3xl font-black text-slate-800">{customerFullName()}</h1>
+                </div>
                 
-                {/* Customer ID - NEW */}
-                {currentCustomer.customerId && (
-                  <div className="flex items-center gap-3 text-slate-600 mb-4">
-                    <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
-                      <Hash size={16} className="text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400 font-bold uppercase">Customer ID</p>
-                      <p className="font-mono font-bold text-indigo-600">{currentCustomer.customerId}</p>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  {/* Phone */}
-                  <div className="flex items-center gap-3 text-slate-600">
-                    <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                      <Phone size={16} className="text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400 font-bold uppercase">Phone</p>
-                      <p className="font-bold">{currentCustomer.phone}</p>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-4 py-2 rounded-lg w-fit">
+                  <Hash size={16} />
+                  <span className="font-mono font-bold">{currentCustomer.customerId}</span>
+                </div>
+              </div>
+            </div>
 
-                  {/* WhatsApp */}
-                  {currentCustomer.whatsappNumber && (
-                    <div className="flex items-center gap-3 text-slate-600">
-                      <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
-                        <Phone size={16} className="text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400 font-bold uppercase">WhatsApp</p>
-                        <p className="font-bold">{currentCustomer.whatsappNumber}</p>
-                      </div>
-                    </div>
+            {/* Contact Information Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              {/* Phone */}
+              <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <Phone size={24} className="text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-blue-600 font-bold uppercase">Phone</p>
+                  <p className="text-xl font-bold text-slate-800">{currentCustomer.phone}</p>
+                </div>
+              </div>
+
+              {/* WhatsApp */}
+              <div className="flex items-center gap-4 p-4 bg-green-50 rounded-xl">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                  <MessageCircle size={24} className="text-green-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-green-600 font-bold uppercase">WhatsApp</p>
+                  <p className="text-xl font-bold text-slate-800">{currentCustomer.whatsappNumber || currentCustomer.phone}</p>
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="flex items-center gap-4 p-4 bg-purple-50 rounded-xl">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <Mail size={24} className="text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-purple-600 font-bold uppercase">Email</p>
+                  <p className="text-xl font-bold text-slate-800 break-all">{currentCustomer.email}</p>
+                </div>
+              </div>
+
+              {/* Total Orders */}
+              <div className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl">
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <ShoppingBag size={24} className="text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-orange-600 font-bold uppercase">Total Orders</p>
+                  <p className="text-xl font-bold text-slate-800">{currentCustomer.totalOrders || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Address Section */}
+            {(currentCustomer.addressLine1 || currentCustomer.city) && (
+              <div className="mb-8">
+                <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                  <MapPin size={20} className="text-blue-600" />
+                  Address
+                </h2>
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                  <p className="text-slate-700 font-medium">{currentCustomer.addressLine1}</p>
+                  {currentCustomer.addressLine2 && <p className="text-slate-600 mt-1">{currentCustomer.addressLine2}</p>}
+                  {(currentCustomer.city || currentCustomer.state || currentCustomer.pincode) && (
+                    <p className="text-slate-600 mt-1">
+                      {[currentCustomer.city, currentCustomer.state, currentCustomer.pincode].filter(Boolean).join(', ')}
+                    </p>
                   )}
-
-                  {/* Email */}
-                  {currentCustomer.email && (
-                    <div className="flex items-center gap-3 text-slate-600">
-                      <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
-                        <Mail size={16} className="text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-400 font-bold uppercase">Email</p>
-                        <p className="font-bold">{currentCustomer.email}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Total Orders */}
-                  <div className="flex items-center gap-3 text-slate-600">
-                    <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
-                      <ShoppingBag size={16} className="text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400 font-bold uppercase">Total Orders</p>
-                      <p className="font-bold">{currentCustomer.totalOrders || 0}</p>
-                    </div>
-                  </div>
-
-                  {/* Customer Since */}
-                  <div className="flex items-center gap-3 text-slate-600">
-                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <Calendar size={16} className="text-slate-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-400 font-bold uppercase">Customer Since</p>
-                      <p className="font-bold">{formatDate(currentCustomer.createdAt)}</p>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Address Section (View Mode Only) */}
-        {!isEditing && (currentCustomer.addressLine1 || currentCustomer.city) && (
-          <div className="px-8 pb-8">
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-              <h2 className="text-lg font-black text-slate-800 mb-3 flex items-center gap-2">
-                <MapPin size={18} className="text-blue-600" />
-                Address Information
-              </h2>
-              <p className="text-slate-700 font-medium">{currentCustomer.addressLine1}</p>
-              {currentCustomer.addressLine2 && <p className="text-slate-600 mt-1">{currentCustomer.addressLine2}</p>}
-              {(currentCustomer.city || currentCustomer.state || currentCustomer.pincode) && (
-                <p className="text-slate-600 mt-1">
-                  {[currentCustomer.city, currentCustomer.state, currentCustomer.pincode].filter(Boolean).join(', ')}
-                </p>
+            {/* Notes Section */}
+            {currentCustomer.notes && (
+              <div className="mb-8">
+                <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                  <FileText size={20} className="text-blue-600" />
+                  Notes
+                </h2>
+                <div className="bg-amber-50 p-6 rounded-xl border border-amber-200">
+                  <p className="text-amber-800 italic">"{currentCustomer.notes}"</p>
+                </div>
+              </div>
+            )}
+
+            {/* Customer Since */}
+            <div className="text-sm text-slate-400 border-t border-slate-100 pt-6">
+              <p>Customer since: {formatDate(currentCustomer.createdAt)}</p>
+              {currentCustomer.updatedAt !== currentCustomer.createdAt && (
+                <p className="mt-1">Last updated: {formatDate(currentCustomer.updatedAt)}</p>
               )}
             </div>
           </div>
@@ -519,7 +542,7 @@ export default function CustomerDetails() {
               </div>
               <h2 className="text-2xl font-black text-center text-slate-800 mb-2">Delete Customer</h2>
               <p className="text-center text-slate-500 mb-6">
-                Are you sure you want to delete <span className="font-black text-slate-700">{customerName}</span>? 
+                Are you sure you want to delete <span className="font-black text-slate-700">{customerFullName()}</span>? 
                 This action cannot be undone.
               </p>
               <div className="flex gap-3">
