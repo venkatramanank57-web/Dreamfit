@@ -6,9 +6,9 @@ import { persistReducer } from "redux-persist";
 import authReducer from "../features/auth/authSlice";
 import customerReducer from "../features/customer/customerSlice";
 import userReducer from "../features/user/userSlice";
-import fabricReducer from "../features/fabric/fabricSlice"; // ✅ Fabric Reducer
-import categoryReducer from "../features/category/categorySlice"; // ✅ Category Reducer
-import itemReducer from "../features/item/itemSlice"; // ✅ Item Reducer
+import fabricReducer from "../features/fabric/fabricSlice";
+import categoryReducer from "../features/category/categorySlice";
+import itemReducer from "../features/item/itemSlice";
 import sizeTemplateReducer from "../features/sizeTemplate/sizeTemplateSlice";
 import sizeFieldReducer from "../features/sizeField/sizeFieldSlice";
 import orderReducer from "../features/order/orderSlice";
@@ -16,20 +16,30 @@ import garmentReducer from "../features/garment/garmentSlice";
 import workReducer from "../features/work/workSlice";
 import tailorReducer from "../features/tailor/tailorSlice";
 
+// ✅ NEW: Add these missing reducers
+import cuttingMasterReducer from "../features/cuttingMaster/cuttingMasterSlice";
+import storeKeeperReducer from "../features/storeKeeper/storeKeeperSlice";
+import notificationReducer from "../features/notification/notificationSlice";
+
 // Combine all reducers
 const rootReducer = combineReducers({
   auth: authReducer,
   customer: customerReducer,
   user: userReducer,
-  fabric: fabricReducer, // ✅ Add Fabric Reducer
-  category: categoryReducer, // ✅ Add Category Reducer
-  item: itemReducer, // ✅ Add Item Reducer
+  fabric: fabricReducer,
+  category: categoryReducer,
+  item: itemReducer,
   sizeTemplate: sizeTemplateReducer,
   sizeField: sizeFieldReducer,
   order: orderReducer,
   garment: garmentReducer,
   work: workReducer,
   tailor: tailorReducer,
+  
+  // ✅ NEW: Add these to the store
+  cuttingMaster: cuttingMasterReducer,
+  storeKeeper: storeKeeperReducer,
+  notification: notificationReducer,
 });
 
 // Persist config

@@ -6,7 +6,8 @@ import {
   ChevronRight, LogOut, UserCircle, Briefcase, Store, Ruler, X,
   Calendar, Clock, CheckSquare, BarChart3, FileText, Truck,
   HelpCircle, BookOpen, Award, Gift, CreditCard, Shield,
-  Flag, Target, TrendingUp, UserPlus, UserCheck, UserX
+  Flag, Target, TrendingUp, UserPlus, UserCheck, UserX,
+  HardHat, ClipboardList // ✅ New icons for Cutting Master and Store Keeper
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../features/auth/authSlice";
@@ -16,6 +17,8 @@ export default function MainLayout() {
   const { user } = useSelector((state) => state.auth);
   const [bankingOpen, setBankingOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [cuttingMasterOpen, setCuttingMasterOpen] = useState(false);
+  const [storeKeeperOpen, setStoreKeeperOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -71,12 +74,20 @@ export default function MainLayout() {
   // Settings access - Admin only
   const canViewSettings = isAdmin;
 
+  // ✅ NEW: Cutting Master Management - Admin only
+  const canViewCuttingMasters = isAdmin;
+
+  // ✅ NEW: Store Keeper Management - Admin only
+  const canViewStoreKeepers = isAdmin;
+
   // Current active link style check
   const isActive = (path) => {
     if (path === '#') return false;
     return location.pathname.includes(path) || 
            (path.includes('banking') && location.pathname.includes('banking')) ||
-           (path.includes('reports') && location.pathname.includes('reports'));
+           (path.includes('reports') && location.pathname.includes('reports')) ||
+           (path.includes('cutting-masters') && location.pathname.includes('cutting-masters')) ||
+           (path.includes('store-keepers') && location.pathname.includes('store-keepers'));
   };
 
   // Role path for navigation
@@ -108,14 +119,14 @@ export default function MainLayout() {
       },
       
       // Works - Everyone can see
-      // { 
-      //   id: 'works', 
-      //   icon: Briefcase, 
-      //   label: 'Works', 
-      //   path: `/${rolePath}/works`, 
-      //   show: canViewWorks,
-      //   description: 'Production work management'
-      // },
+      { 
+        id: 'works', 
+        icon: Briefcase, 
+        label: 'Works', 
+        path: `/${rolePath}/works`, 
+        show: canViewWorks,
+        description: 'Production work management'
+      },
       
       // Tailors - Everyone can see
       { 
@@ -125,6 +136,26 @@ export default function MainLayout() {
         path: `/${rolePath}/tailors`, 
         show: canViewTailors,
         description: 'Manage tailor profiles and assignments'
+      },
+      
+      // ✅ NEW: Cutting Masters - Admin only
+      { 
+        id: 'cutting-masters', 
+        icon: HardHat, 
+        label: 'Cutting Masters', 
+        path: `/${rolePath}/cutting-masters`, 
+        show: canViewCuttingMasters,
+        description: 'Manage cutting masters'
+      },
+      
+      // ✅ NEW: Store Keepers - Admin only
+      { 
+        id: 'store-keepers', 
+        icon: Store, 
+        label: 'Store Keepers', 
+        path: `/${rolePath}/store-keepers`, 
+        show: canViewStoreKeepers,
+        description: 'Manage store keepers'
       },
       
       // Measurements - Admin, Store Keeper, and Cutting Master

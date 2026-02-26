@@ -1,3 +1,4 @@
+// src/features/notification/notificationSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as notificationApi from "./notificationApi";
 

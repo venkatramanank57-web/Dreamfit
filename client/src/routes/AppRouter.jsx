@@ -46,6 +46,18 @@ import AddTailor from "../Pages/admin/AddTailor";
 import TailorDetails from "../Pages/admin/TailorDetails";
 import EditTailor from "../Pages/admin/EditTailor";
 
+// ✅ NEW: CUTTING MASTER COMPONENTS
+import CuttingMasters from "../Pages/admin/cuttingMaster/CuttingMasters";
+import AddCuttingMaster from "../Pages/admin/cuttingMaster/AddCuttingMaster";
+import CuttingMasterDetails from "../Pages/admin/cuttingMaster/CuttingMasterDetails";
+import EditCuttingMaster from "../Pages/admin/cuttingMaster/EditCuttingMaster";
+
+// ✅ NEW: STORE KEEPER COMPONENTS
+import StoreKeepers from "../Pages/admin/storeKeeper/StoreKeepers";
+import AddStoreKeeper from "../Pages/admin/storeKeeper/AddStoreKeeper";
+import StoreKeeperDetails from "../Pages/admin/storeKeeper/StoreKeeperDetails";
+import EditStoreKeeper from "../Pages/admin/storeKeeper/EditStoreKeeper";
+
 // Placeholders
 const ManagerDashboard = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
@@ -186,6 +198,18 @@ export default function AppRouter() {
           <Route path="tailors/:id" element={<TailorDetails />} />
           <Route path="tailors/edit/:id" element={<EditTailor />} />
           
+          {/* ✅ NEW: Cutting Masters Management */}
+          <Route path="cutting-masters" element={<CuttingMasters />} />
+          <Route path="cutting-masters/add" element={<AddCuttingMaster />} />
+          <Route path="cutting-masters/:id" element={<CuttingMasterDetails />} />
+          <Route path="cutting-masters/edit/:id" element={<EditCuttingMaster />} />
+          
+          {/* ✅ NEW: Store Keepers Management */}
+          <Route path="store-keepers" element={<StoreKeepers />} />
+          <Route path="store-keepers/add" element={<AddStoreKeeper />} />
+          <Route path="store-keepers/:id" element={<StoreKeeperDetails />} />
+          <Route path="store-keepers/edit/:id" element={<EditStoreKeeper />} />
+          
           {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
@@ -267,6 +291,12 @@ export default function AppRouter() {
           <Route path="tailors/:id" element={<TailorDetails />} />
           <Route path="tailors/edit/:id" element={<EditTailor />} />
           
+          {/* ✅ Store Keepers - Store Keeper cannot manage other store keepers */}
+          {/* ❌ No routes for store-keepers here */}
+          
+          {/* ✅ Cutting Masters - Store Keeper cannot manage cutting masters */}
+          {/* ❌ No routes for cutting-masters here */}
+          
           {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
@@ -324,6 +354,12 @@ export default function AppRouter() {
           {/* Tailors - Cutting Master can view tailors and update leave status */}
           <Route path="tailors" element={<Tailors />} />
           <Route path="tailors/:id" element={<TailorDetails />} />
+          
+          {/* ✅ Store Keepers - Cutting Master cannot view store keepers */}
+          {/* ❌ No routes for store-keepers here */}
+          
+          {/* ✅ Cutting Masters - Cutting Master cannot view other cutting masters */}
+          {/* ❌ No routes for cutting-masters here */}
           
           {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />

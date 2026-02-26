@@ -5,11 +5,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { 
   UserPlus, Users, Edit, Trash2, Search, 
   Mail, Phone, Calendar, CheckCircle, XCircle,
-  AlertCircle, UserCog, Power, Eye, PlusCircle,
-  Scissors // ✅ Add Tailor icon
+  AlertCircle, UserCog, Power, Eye,
+  Scissors, HardHat, Store
 } from "lucide-react";
 import { fetchAllStaff, updateStaff, deleteStaff, toggleStaffStatus } from "../../features/user/userSlice";
-import { fetchAllTailors, deleteTailor } from "../../features/tailor/tailorSlice"; // ✅ Import tailor actions
+import { fetchAllTailors, deleteTailor } from "../../features/tailor/tailorSlice";
+import { fetchAllCuttingMasters, deleteCuttingMaster } from "../../features/cuttingMaster/cuttingMasterSlice";
+import { fetchAllStoreKeepers, deleteStoreKeeper } from "../../features/storeKeeper/storeKeeperSlice";
 import showToast from "../../utils/toast";
 
 export default function Staff() {
@@ -17,13 +19,15 @@ export default function Staff() {
   const dispatch = useDispatch();
   
   const { users = [], loading = false } = useSelector((state) => state.user) || {};
-  const { tailors = [], loading: tailorsLoading = false } = useSelector((state) => state.tailor) || {}; // ✅ Get tailors
+  const { tailors = [], loading: tailorsLoading = false } = useSelector((state) => state.tailor) || {};
+  const { cuttingMasters = [], loading: cuttingMastersLoading = false } = useSelector((state) => state.cuttingMaster) || {};
+  const { storeKeepers = [], loading: storeKeepersLoading = false } = useSelector((state) => state.storeKeeper) || {};
   const { user: currentUser } = useSelector((state) => state.auth || {});
 
   const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [deleteType, setDeleteType] = useState("staff"); // 'staff' or 'tailor'
+  const [deleteType, setDeleteType] = useState("staff");
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState({
     name: "",
@@ -31,21 +35,22 @@ export default function Staff() {
     role: "",
     phone: ""
   });
-  const [filterRole, setFilterRole] = useState("all"); // ✅ Role filter
+  const [filterRole, setFilterRole] = useState("all");
 
-  // Fetch all staff and tailors on component mount
+  // Fetch all data on component mount
   useEffect(() => {
     dispatch(fetchAllStaff());
-    dispatch(fetchAllTailors()); // ✅ Fetch tailors too
+    dispatch(fetchAllTailors());
+    dispatch(fetchAllCuttingMasters());
+    dispatch(fetchAllStoreKeepers());
   }, [dispatch]);
 
-  // Combine users and tailors
+  // Combine all users, tailors, cutting masters, and store keepers
   const combinedStaff = useMemo(() => {
     const staffList = users.filter(user => 
-      user && (user.role === "STORE_KEEPER" || user.role === "CUTTING_MASTER" || user.role === "TAILOR")
+      user && (user.role === "STORE_KEEPER" || user.role === "CUTTING_MASTER")
     );
     
-    // Convert tailors to staff format
     const tailorList = tailors.map(tailor => ({
       _id: tailor._id,
       name: tailor.name,
@@ -55,22 +60,46 @@ export default function Staff() {
       isActive: tailor.isActive,
       createdAt: tailor.joiningDate || tailor.createdAt,
       updatedAt: tailor.updatedAt,
-      isTailor: true, // ✅ Flag to identify tailor
-      tailorData: tailor // Original tailor data
+      type: "tailor",
+      originalData: tailor
     }));
 
-    return [...staffList, ...tailorList];
-  }, [users, tailors]);
+    const cuttingMasterList = cuttingMasters.map(cm => ({
+      _id: cm._id,
+      name: cm.name,
+      email: cm.email,
+      phone: cm.phone,
+      role: "CUTTING_MASTER",
+      isActive: cm.isActive,
+      createdAt: cm.joiningDate || cm.createdAt,
+      updatedAt: cm.updatedAt,
+      type: "cuttingMaster",
+      originalData: cm
+    }));
 
-  // Filter users based on search and role
+    const storeKeeperList = storeKeepers.map(sk => ({
+      _id: sk._id,
+      name: sk.name,
+      email: sk.email,
+      phone: sk.phone,
+      role: "STORE_KEEPER",
+      isActive: sk.isActive,
+      createdAt: sk.joiningDate || sk.createdAt,
+      updatedAt: sk.updatedAt,
+      type: "storeKeeper",
+      originalData: sk
+    }));
+
+    return [...staffList, ...tailorList, ...cuttingMasterList, ...storeKeeperList];
+  }, [users, tailors, cuttingMasters, storeKeepers]);
+
+  // Filter based on search and role
   const filteredUsers = useMemo(() => {
     if (!combinedStaff || !Array.isArray(combinedStaff)) return [];
     
     return combinedStaff.filter(user => {
-      // Role filter
       if (filterRole !== "all" && user.role !== filterRole) return false;
       
-      // Search filter
       const matchesSearch = 
         user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,38 +109,37 @@ export default function Staff() {
     });
   }, [combinedStaff, searchTerm, filterRole]);
 
-  // Navigate to add staff page
-  const handleAddStaff = () => {
-    navigate("/admin/add-staff");
-  };
+  // Navigate to add pages
+  const handleAddStaff = () => navigate("/admin/add-staff");
+  const handleAddTailor = () => navigate("/admin/tailors/add");
+  const handleAddCuttingMaster = () => navigate("/admin/cutting-masters/add");
+  const handleAddStoreKeeper = () => navigate("/admin/store-keepers/add");
 
-  // Navigate to add tailor page
-  const handleAddTailor = () => {
-    navigate("/admin/tailors/add");
-  };
-
-  // View individual staff/tailor details
-  const handleViewStaff = (staff) => {
-    if (staff.isTailor) {
-      navigate(`/admin/tailors/${staff._id}`); // ✅ Go to tailor details
-    } else {
-      navigate(`/admin/staff/${staff._id}`); // ✅ Go to staff details
+  // View details
+  const handleViewDetails = (item) => {
+    switch(item.type) {
+      case "tailor": navigate(`/admin/tailors/${item._id}`); break;
+      case "cuttingMaster": navigate(`/admin/cutting-masters/${item._id}`); break;
+      case "storeKeeper": navigate(`/admin/store-keepers/${item._id}`); break;
+      default: navigate(`/admin/staff/${item._id}`);
     }
   };
 
-  // Edit staff/tailor
-  const handleEdit = (staff) => {
-    if (staff.isTailor) {
-      navigate(`/admin/tailors/edit/${staff._id}`); // ✅ Edit tailor
-    } else {
-      setSelectedUser(staff);
-      setEditFormData({
-        name: staff.name || "",
-        email: staff.email || "",
-        role: staff.role || "STORE_KEEPER",
-        phone: staff.phone || ""
-      });
-      setIsEditing(true);
+  // Edit
+  const handleEdit = (item) => {
+    switch(item.type) {
+      case "tailor": navigate(`/admin/tailors/edit/${item._id}`); break;
+      case "cuttingMaster": navigate(`/admin/cutting-masters/edit/${item._id}`); break;
+      case "storeKeeper": navigate(`/admin/store-keepers/edit/${item._id}`); break;
+      default:
+        setSelectedUser(item);
+        setEditFormData({
+          name: item.name || "",
+          email: item.email || "",
+          role: item.role || "STORE_KEEPER",
+          phone: item.phone || ""
+        });
+        setIsEditing(true);
     }
   };
 
@@ -134,21 +162,20 @@ export default function Staff() {
     }
   };
 
-  // Delete staff/tailor
-  const handleDeleteClick = (staff) => {
-    setSelectedUser(staff);
-    setDeleteType(staff.isTailor ? "tailor" : "staff");
+  // Delete
+  const handleDeleteClick = (item) => {
+    setSelectedUser(item);
+    setDeleteType(item.type || "staff");
     setShowDeleteModal(true);
   };
 
   const handleDelete = async () => {
     try {
-      if (deleteType === "tailor") {
-        await dispatch(deleteTailor(selectedUser._id)).unwrap();
-        showToast.success("Tailor deleted successfully! 🗑️");
-      } else {
-        await dispatch(deleteStaff(selectedUser._id)).unwrap();
-        showToast.success("Staff deleted successfully! 🗑️");
+      switch(deleteType) {
+        case "tailor": await dispatch(deleteTailor(selectedUser._id)).unwrap(); showToast.success("Tailor deleted successfully! 🗑️"); break;
+        case "cuttingMaster": await dispatch(deleteCuttingMaster(selectedUser._id)).unwrap(); showToast.success("Cutting Master deleted successfully! 🗑️"); break;
+        case "storeKeeper": await dispatch(deleteStoreKeeper(selectedUser._id)).unwrap(); showToast.success("Store Keeper deleted successfully! 🗑️"); break;
+        default: await dispatch(deleteStaff(selectedUser._id)).unwrap(); showToast.success("Staff deleted successfully! 🗑️");
       }
       setShowDeleteModal(false);
       setSelectedUser(null);
@@ -157,45 +184,59 @@ export default function Staff() {
     }
   };
 
-  // Toggle status (only for staff, not tailors)
-  const handleToggleStatus = async (staff) => {
-    if (staff.isTailor) {
-      showToast.info("Tailor status can be managed in Tailor Details");
+  // Toggle status (only for staff users)
+  const handleToggleStatus = async (item) => {
+    if (item.type) {
+      showToast.info(`${item.role.replace('_', ' ')} status can be managed in their details page`);
       return;
     }
     try {
-      await dispatch(toggleStaffStatus(staff._id)).unwrap();
-      showToast.success(`Staff ${staff.isActive ? 'deactivated' : 'activated'} successfully!`);
+      await dispatch(toggleStaffStatus(item._id)).unwrap();
+      showToast.success(`Staff ${item.isActive ? 'deactivated' : 'activated'} successfully!`);
     } catch (error) {
       showToast.error("Failed to toggle status");
     }
   };
 
-  const getRoleBadge = (role) => {
+  const getRoleBadge = (role, type) => {
+    const baseClasses = "px-3 py-1 rounded-full text-xs font-bold";
+    
+    if (type === "tailor") return `${baseClasses} bg-blue-100 text-blue-700`;
+    if (type === "cuttingMaster") return `${baseClasses} bg-orange-100 text-orange-700`;
+    if (type === "storeKeeper") return `${baseClasses} bg-green-100 text-green-700`;
+    
     switch(role) {
-      case "ADMIN":
-        return "bg-purple-100 text-purple-700";
-      case "STORE_KEEPER":
-        return "bg-green-100 text-green-700";
-      case "CUTTING_MASTER":
-        return "bg-orange-100 text-orange-700";
-      case "TAILOR":
-        return "bg-blue-100 text-blue-700";
-      default:
-        return "bg-slate-100 text-slate-700";
+      case "ADMIN": return `${baseClasses} bg-purple-100 text-purple-700`;
+      case "STORE_KEEPER": return `${baseClasses} bg-green-100 text-green-700`;
+      case "CUTTING_MASTER": return `${baseClasses} bg-orange-100 text-orange-700`;
+      case "TAILOR": return `${baseClasses} bg-blue-100 text-blue-700`;
+      default: return `${baseClasses} bg-slate-100 text-slate-700`;
     }
   };
 
-  const getRoleIcon = (role) => {
+  const getRoleIcon = (role, type) => {
+    if (type === "tailor") return "🧵";
+    if (type === "cuttingMaster") return "✂️";
+    if (type === "storeKeeper") return "🛍️";
+    
     switch(role) {
-      case "TAILOR":
-        return "🧵";
-      case "CUTTING_MASTER":
-        return "✂️";
-      case "STORE_KEEPER":
-        return "📦";
-      default:
-        return "👤";
+      case "TAILOR": return "🧵";
+      case "CUTTING_MASTER": return "✂️";
+      case "STORE_KEEPER": return "🛍️";
+      default: return "👤";
+    }
+  };
+
+  const getAvatarGradient = (role, type) => {
+    if (type === "tailor") return "from-blue-500 to-blue-600";
+    if (type === "cuttingMaster") return "from-orange-500 to-orange-600";
+    if (type === "storeKeeper") return "from-green-500 to-green-600";
+    
+    switch(role) {
+      case "STORE_KEEPER": return "from-green-500 to-green-600";
+      case "CUTTING_MASTER": return "from-orange-500 to-orange-600";
+      case "TAILOR": return "from-blue-500 to-blue-600";
+      default: return "from-purple-500 to-purple-600";
     }
   };
 
@@ -209,67 +250,86 @@ export default function Staff() {
     });
   };
 
+  const isLoading = loading || tailorsLoading || cuttingMastersLoading || storeKeepersLoading;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-3">
-            <UserCog size={32} className="text-blue-600" />
-            Staff & Tailors Management
-          </h1>
-          <p className="text-slate-500 font-medium">Manage Store Keepers, Cutting Masters, and Tailors</p>
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-3">
+              <UserCog size={32} className="text-blue-600" />
+              Team Management
+            </h1>
+            <p className="text-slate-500 font-medium mt-2">Manage all staff, tailors, cutting masters, and store keepers</p>
+          </div>
+
+          {/* Search and Filter Section */}
+          <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto">
+            {/* Search Bar */}
+            <div className="relative w-full lg:w-80">
+              <Search className="absolute left-4 top-3.5 text-slate-400" size={20} />
+              <input 
+                type="text" 
+                placeholder="Search by name, email..." 
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            {/* Role Filter */}
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="w-full lg:w-auto px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
+            >
+              <option value="all">All Roles</option>
+              <option value="STORE_KEEPER">Store Keepers</option>
+              <option value="CUTTING_MASTER">Cutting Masters</option>
+              <option value="TAILOR">Tailors</option>
+            </select>
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-4 top-3.5 text-slate-400" size={20} />
-            <input 
-              type="text" 
-              placeholder="Search by name, email..." 
-              className="pl-12 pr-6 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 w-full sm:w-80 font-bold transition-all"
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          {/* Role Filter */}
-          <select
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
-            className="px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 font-bold"
+        {/* Add Buttons - Separated for better layout */}
+        <div className="flex flex-wrap gap-3 mt-6">
+          <button
+            onClick={handleAddStaff}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-md"
           >
-            <option value="all">All Roles</option>
-            <option value="STORE_KEEPER">Store Keepers</option>
-            <option value="CUTTING_MASTER">Cutting Masters</option>
-            <option value="TAILOR">Tailors</option>
-          </select>
+            <UserPlus size={18} />
+            Add Staff
+          </button>
           
-          {/* Add Buttons */}
-          <div className="flex gap-2">
-            <button
-              onClick={handleAddStaff}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3.5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
-              title="Add Staff"
-            >
-              <UserPlus size={20} />
-              <span className="hidden lg:inline">Add Staff</span>
-            </button>
-            
-            <button
-              onClick={handleAddTailor}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-3.5 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg shadow-green-500/25 flex items-center gap-2"
-              title="Add Tailor"
-            >
-              <Scissors size={20} />
-              <span className="hidden lg:inline">Add Tailor</span>
-            </button>
-          </div>
+          <button
+            onClick={handleAddTailor}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md"
+          >
+            <Scissors size={18} />
+            Add Tailor
+          </button>
+
+          <button
+            onClick={handleAddCuttingMaster}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition-all shadow-md"
+          >
+            <HardHat size={18} />
+            Add Cutting Master
+          </button>
+
+          <button
+            onClick={handleAddStoreKeeper}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-all shadow-md"
+          >
+            <Store size={18} />
+            Add Store Keeper
+          </button>
         </div>
       </div>
 
-      {/* Staff/Tailor List */}
+      {/* Team Members List */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -283,43 +343,43 @@ export default function Staff() {
           </span>
         </div>
 
-        {loading || tailorsLoading ? (
+        {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p className="text-slate-500 font-medium">Loading...</p>
           </div>
         ) : filteredUsers.length > 0 ? (
           <div className="divide-y divide-slate-100">
-            {filteredUsers.map((staff) => (
-              <div key={staff._id} className="p-6 hover:bg-slate-50 transition-all group">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
+            {filteredUsers.map((item) => (
+              <div key={item._id} className="p-6 hover:bg-slate-50 transition-all group">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  {/* Left Section - Avatar and Info */}
+                  <div className="flex items-start gap-4 flex-1">
                     {/* Avatar */}
                     <div 
-                      onClick={() => handleViewStaff(staff)}
-                      className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg cursor-pointer hover:scale-105 transition-transform
-                      ${staff.role === 'STORE_KEEPER' ? 'bg-gradient-to-br from-green-500 to-green-600' : 
-                        staff.role === 'CUTTING_MASTER' ? 'bg-gradient-to-br from-orange-500 to-orange-600' : 
-                        staff.role === 'TAILOR' ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
-                        'bg-gradient-to-br from-purple-500 to-purple-600'}`}
+                      onClick={() => handleViewDetails(item)}
+                      className={`w-16 h-16 rounded-xl bg-gradient-to-br ${getAvatarGradient(item.role, item.type)} flex items-center justify-center text-white font-black text-2xl shadow-lg cursor-pointer hover:scale-105 transition-transform flex-shrink-0`}
                       title="View details"
                     >
-                      {getRoleIcon(staff.role)}
+                      {getRoleIcon(item.role, item.type)}
                     </div>
 
-                    {/* Staff Info */}
+                    {/* Info */}
                     <div 
-                      onClick={() => handleViewStaff(staff)}
+                      onClick={() => handleViewDetails(item)}
                       className="flex-1 cursor-pointer"
                     >
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <h3 className="font-black text-slate-800 text-lg hover:text-blue-600 transition-colors">
-                          {staff.name}
+                          {item.name}
                         </h3>
-                        <span className={`text-xs font-black px-3 py-1 rounded-full ${getRoleBadge(staff.role)}`}>
-                          {staff.role === 'TAILOR' ? '🧵 Tailor' : staff.role.replace('_', ' ')}
+                        <span className={getRoleBadge(item.role, item.type)}>
+                          {item.type === "tailor" ? "Tailor" : 
+                           item.type === "cuttingMaster" ? "Cutting Master" :
+                           item.type === "storeKeeper" ? "Store Keeper" :
+                           item.role?.replace('_', ' ')}
                         </span>
-                        {staff.isActive ? (
+                        {item.isActive ? (
                           <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                             <CheckCircle size={12} /> Active
                           </span>
@@ -330,41 +390,41 @@ export default function Staff() {
                         )}
                       </div>
                       
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                        <span className="flex items-center gap-1.5 text-sm text-slate-600">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                        <span className="flex items-center gap-1.5 text-slate-600">
                           <Mail size={14} className="text-slate-400" />
-                          {staff.email}
+                          {item.email}
                         </span>
                         
-                        {staff.phone ? (
-                          <span className="flex items-center gap-1.5 text-sm text-slate-600">
+                        {item.phone ? (
+                          <span className="flex items-center gap-1.5 text-slate-600">
                             <Phone size={14} className="text-slate-400" />
-                            {staff.phone}
+                            {item.phone}
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1.5 text-sm text-slate-400">
+                          <span className="flex items-center gap-1.5 text-slate-400">
                             <Phone size={14} className="text-slate-300" />
                             No phone
                           </span>
                         )}
                         
-                        <span className="flex items-center gap-1.5 text-sm text-slate-500">
+                        <span className="flex items-center gap-1.5 text-slate-500">
                           <Calendar size={14} className="text-slate-400" />
-                          Joined {formatDate(staff.createdAt)}
+                          Joined {formatDate(item.createdAt)}
                         </span>
                       </div>
 
-                      {/* Show tailor specialization if available */}
-                      {staff.isTailor && staff.tailorData?.specialization?.length > 0 && (
+                      {/* Show specialization for tailors */}
+                      {item.type === "tailor" && item.originalData?.specialization?.length > 0 && (
                         <div className="flex gap-1 mt-2">
-                          {staff.tailorData.specialization.slice(0, 2).map((spec, idx) => (
+                          {item.originalData.specialization.slice(0, 3).map((spec, idx) => (
                             <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                               {spec}
                             </span>
                           ))}
-                          {staff.tailorData.specialization.length > 2 && (
+                          {item.originalData.specialization.length > 3 && (
                             <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                              +{staff.tailorData.specialization.length - 2}
+                              +{item.originalData.specialization.length - 3}
                             </span>
                           )}
                         </div>
@@ -373,9 +433,9 @@ export default function Staff() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2 md:ml-4">
+                  <div className="flex items-center gap-2 lg:ml-4">
                     <button
-                      onClick={() => handleViewStaff(staff)}
+                      onClick={() => handleViewDetails(item)}
                       className="p-2.5 bg-indigo-100 text-indigo-600 hover:bg-indigo-200 rounded-xl transition-all"
                       title="View Details"
                     >
@@ -383,21 +443,21 @@ export default function Staff() {
                     </button>
                     
                     <button
-                      onClick={() => handleToggleStatus(staff)}
+                      onClick={() => handleToggleStatus(item)}
                       className={`p-2.5 rounded-xl transition-all ${
-                        staff.isTailor ? 'bg-slate-100 text-slate-400 cursor-not-allowed' :
-                        staff.isActive 
+                        item.type ? 'bg-slate-100 text-slate-400 cursor-not-allowed' :
+                        item.isActive 
                           ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' 
                           : 'bg-green-100 text-green-600 hover:bg-green-200'
                       }`}
-                      title={staff.isTailor ? 'Manage in Tailor Details' : (staff.isActive ? 'Deactivate' : 'Activate')}
-                      disabled={staff.isTailor}
+                      title={item.type ? 'Manage in details page' : (item.isActive ? 'Deactivate' : 'Activate')}
+                      disabled={!!item.type}
                     >
                       <Power size={18} />
                     </button>
                     
                     <button
-                      onClick={() => handleEdit(staff)}
+                      onClick={() => handleEdit(item)}
                       className="p-2.5 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-xl transition-all"
                       title="Edit"
                     >
@@ -405,7 +465,7 @@ export default function Staff() {
                     </button>
                     
                     <button
-                      onClick={() => handleDeleteClick(staff)}
+                      onClick={() => handleDeleteClick(item)}
                       className="p-2.5 bg-red-100 text-red-600 hover:bg-red-200 rounded-xl transition-all"
                       title="Delete"
                     >
@@ -418,121 +478,87 @@ export default function Staff() {
           </div>
         ) : (
           <div className="text-center py-16">
-            <Users size={48} className="text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-400 font-black text-xl">No Team Members Found</p>
-            <p className="text-slate-300 mt-2">Add your first staff or tailor</p>
-            <div className="flex gap-3 justify-center mt-6">
-              <button
-                onClick={handleAddStaff}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-blue-500/30 transition-all inline-flex items-center gap-2"
-              >
-                <UserPlus size={20} />
-                Add Staff
-              </button>
-              <button
-                onClick={handleAddTailor}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-green-500/30 transition-all inline-flex items-center gap-2"
-              >
-                <Scissors size={20} />
-                Add Tailor
-              </button>
-            </div>
+            <Users size={64} className="text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-400 font-black text-2xl mb-2">No Team Members Found</p>
+            <p className="text-slate-300 mb-8">Add your first team member using the buttons above</p>
           </div>
         )}
       </div>
 
-      {/* Edit Modal (for staff only) */}
+      {/* Edit Modal */}
       {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="p-6">
-              <h2 className="text-xl font-black text-slate-800 mb-4">Edit Staff</h2>
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  name="name"
-                  value={editFormData.name}
-                  onChange={handleEditChange}
-                  placeholder="Name"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-                <input
-                  type="email"
-                  name="email"
-                  value={editFormData.email}
-                  onChange={handleEditChange}
-                  placeholder="Email"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-                <select
-                  name="role"
-                  value={editFormData.role}
-                  onChange={handleEditChange}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
+            <h2 className="text-xl font-black mb-6">Edit Staff</h2>
+            <div className="space-y-4">
+              <input 
+                type="text" 
+                name="name" 
+                value={editFormData.name} 
+                onChange={handleEditChange} 
+                placeholder="Full Name"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <input 
+                type="email" 
+                name="email" 
+                value={editFormData.email} 
+                onChange={handleEditChange} 
+                placeholder="Email Address"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <input 
+                type="tel" 
+                name="phone" 
+                value={editFormData.phone} 
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setEditFormData(prev => ({ ...prev, phone: value }));
+                }}
+                placeholder="Phone Number"
+                maxLength="10"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <div className="flex gap-3 pt-4">
+                <button 
+                  onClick={handleEditSubmit} 
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all"
                 >
-                  <option value="STORE_KEEPER">Store Keeper</option>
-                  <option value="CUTTING_MASTER">Cutting Master</option>
-                  <option value="TAILOR">Tailor</option>
-                </select>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={editFormData.phone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
-                    setEditFormData(prev => ({ ...prev, phone: value }));
-                  }}
-                  placeholder="Phone"
-                  maxLength="10"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
-                />
-                <div className="flex gap-3 pt-4">
-                  <button
-                    onClick={handleEditSubmit}
-                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-bold"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold"
-                  >
-                    Cancel
-                  </button>
-                </div>
+                  Save Changes
+                </button>
+                <button 
+                  onClick={() => setIsEditing(false)} 
+                  className="flex-1 px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition-all"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="p-6">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle size={32} className="text-red-600" />
-              </div>
-              <h2 className="text-2xl font-black text-center text-slate-800 mb-2">
-                Delete {deleteType === "tailor" ? "Tailor" : "Staff"}
-              </h2>
-              <p className="text-center text-slate-500 mb-6">
-                Are you sure you want to delete <span className="font-black text-slate-700">{selectedUser?.name}</span>?
-                {deleteType === "tailor" && (
-                  <span className="block mt-2 text-sm text-red-500">This will also remove their user account.</span>
-                )}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
+            <div className="text-center">
+              <AlertCircle size={64} className="text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-black mb-2">Confirm Delete</h2>
+              <p className="text-slate-500 mb-2">
+                Are you sure you want to delete <span className="font-bold text-slate-800">{selectedUser?.name}</span>?
               </p>
+              <p className="text-sm text-red-500 mb-6">This action cannot be undone.</p>
               <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="flex-1 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black"
+                <button 
+                  onClick={() => setShowDeleteModal(false)} 
+                  className="flex-1 px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition-all"
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleDelete}
-                  className="flex-1 px-6 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black"
+                <button 
+                  onClick={handleDelete} 
+                  className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all"
                 >
                   Delete
                 </button>

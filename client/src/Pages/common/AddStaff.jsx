@@ -92,37 +92,40 @@ export default function AddStaff() {
               name: formData.name,
               email: formData.email,
               phone: formData.phone,
-              fromStaff: true // Flag to indicate coming from Staff page
+              fromStaff: true
             }
           });
         }, 1000);
         break;
 
       case "CUTTING_MASTER":
-        // TODO: Create Cutting Master page later
-        showToast.info("Cutting Master creation page coming soon...");
-        // Future: navigate("/admin/cutting-masters/add", { state: formData });
+        // ✅ Redirect to Add Cutting Master page with pre-filled data
+        showToast.info("Redirecting to Cutting Master creation page...");
+        setTimeout(() => {
+          navigate("/admin/cutting-masters/add", { 
+            state: { 
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              fromStaff: true
+            }
+          });
+        }, 1000);
         break;
 
       case "STORE_KEEPER":
-        // Create Store Keeper using User model (existing flow)
-        if (!validateForm()) {
-          showToast.error("Please fix the errors in the form");
-          return;
-        }
-        
-        try {
-          await dispatch(createStaff(formData)).unwrap();
-          showToast.success("Store Keeper created successfully! 🎉");
-          navigate("/admin/staff");
-        } catch (error) {
-          const errorMsg = error || "Failed to create staff";
-          showToast.error(errorMsg);
-          
-          if (errorMsg.includes("email")) {
-            setErrors(prev => ({ ...prev, email: "Email already exists" }));
-          }
-        }
+        // ✅ Redirect to Add Store Keeper page with pre-filled data
+        showToast.info("Redirecting to Store Keeper creation page...");
+        setTimeout(() => {
+          navigate("/admin/store-keepers/add", { 
+            state: { 
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              fromStaff: true
+            }
+          });
+        }, 1000);
         break;
 
       default:
@@ -142,23 +145,26 @@ export default function AddStaff() {
       icon: "🛍️",
       description: "Manages inventory and store operations",
       color: "green",
-      model: "User Model"
+      model: "StoreKeeper Model",
+      path: "/admin/store-keepers/add"
     },
     { 
       value: "CUTTING_MASTER", 
       label: "Cutting Master", 
       icon: "✂️",
-      description: "Handles cutting operations (Coming Soon)",
+      description: "Handles cutting operations",
       color: "orange",
-      model: "Coming Soon"
+      model: "CuttingMaster Model",
+      path: "/admin/cutting-masters/add"
     },
     { 
       value: "TAILOR", 
       label: "Tailor", 
       icon: "🧵",
-      description: "Sews garments (Redirects to Tailor form)",
+      description: "Sews garments",
       color: "blue",
-      model: "Tailor Model"
+      model: "Tailor Model",
+      path: "/admin/tailors/add"
     },
   ];
 
@@ -200,7 +206,7 @@ export default function AddStaff() {
         </button>
       </div>
 
-      {/* Role Selection Notice for Tailor/Cutting Master */}
+      {/* Role Selection Notice */}
       {selectedRole === "TAILOR" && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -225,12 +231,29 @@ export default function AddStaff() {
               <ArrowRight size={20} className="text-orange-600" />
             </div>
             <div>
-              <p className="text-sm font-bold text-orange-800">Cutting Master</p>
-              <p className="text-xs text-orange-600">This feature is coming soon!</p>
+              <p className="text-sm font-bold text-orange-800">You're adding a Cutting Master</p>
+              <p className="text-xs text-orange-600">You'll be redirected to the Cutting Master creation form</p>
             </div>
           </div>
           <span className="text-xs bg-orange-200 text-orange-800 px-3 py-1 rounded-full font-bold">
-            Coming Soon
+            CuttingMaster Model
+          </span>
+        </div>
+      )}
+
+      {selectedRole === "STORE_KEEPER" && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+              <ArrowRight size={20} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-green-800">You're adding a Store Keeper</p>
+              <p className="text-xs text-green-600">You'll be redirected to the Store Keeper creation form</p>
+            </div>
+          </div>
+          <span className="text-xs bg-green-200 text-green-800 px-3 py-1 rounded-full font-bold">
+            StoreKeeper Model
           </span>
         </div>
       )}
@@ -288,32 +311,24 @@ export default function AddStaff() {
             )}
           </div>
 
-          {/* Password - Hide for Tailor (since Tailor uses different model) */}
-          {selectedRole !== "TAILOR" && (
-            <div>
-              <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-wider">
-                Password {selectedRole === "STORE_KEEPER" && <span className="text-red-500">*</span>}
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-4 text-slate-400" size={20} />
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder={selectedRole === "CUTTING_MASTER" ? "Optional for now" : "Enter password (min 6 characters)"}
-                  className={`w-full pl-12 pr-5 py-4 bg-slate-50 border ${
-                    errors.password ? 'border-red-300 bg-red-50' : 'border-slate-200'
-                  } rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium`}
-                />
-              </div>
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <AlertCircle size={12} /> {errors.password}
-                </p>
-              )}
+          {/* Password - Only for reference, not used in redirect */}
+          <div>
+            <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-wider">
+              Password (Optional)
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-4 text-slate-400" size={20} />
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Password will be set in the next form"
+                className={`w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium`}
+                disabled
+              />
             </div>
-          )}
+          </div>
 
           {/* Role Selection */}
           <div>
@@ -397,22 +412,8 @@ export default function AddStaff() {
                 </>
               ) : (
                 <>
-                  {selectedRole === "TAILOR" ? (
-                    <>
-                      <ArrowRight size={18} />
-                      Continue to Tailor Form
-                    </>
-                  ) : selectedRole === "CUTTING_MASTER" ? (
-                    <>
-                      <ArrowRight size={18} />
-                      Coming Soon
-                    </>
-                  ) : (
-                    <>
-                      <Save size={18} />
-                      Create Store Keeper
-                    </>
-                  )}
+                  <ArrowRight size={18} />
+                  Continue to {selectedRole === "TAILOR" ? "Tailor" : selectedRole === "CUTTING_MASTER" ? "Cutting Master" : "Store Keeper"} Form
                 </>
               )}
             </button>
@@ -436,13 +437,13 @@ export default function AddStaff() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
           <div className="bg-white p-3 rounded-lg border border-green-200">
             <span className="font-black text-green-600">🛍️ Store Keeper</span>
-            <p className="text-slate-600 mt-1">Uses <span className="font-bold text-green-600">User Model</span></p>
-            <p className="text-slate-400 text-[10px] mt-1">Stored in 'users' collection</p>
+            <p className="text-slate-600 mt-1">Uses <span className="font-bold text-green-600">StoreKeeper Model</span></p>
+            <p className="text-slate-400 text-[10px] mt-1">Redirects to Store Keeper form</p>
           </div>
           <div className="bg-white p-3 rounded-lg border border-orange-200">
             <span className="font-black text-orange-600">✂️ Cutting Master</span>
             <p className="text-slate-600 mt-1">Uses <span className="font-bold text-orange-600">CuttingMaster Model</span></p>
-            <p className="text-slate-400 text-[10px] mt-1">Coming soon</p>
+            <p className="text-slate-400 text-[10px] mt-1">Redirects to Cutting Master form</p>
           </div>
           <div className="bg-white p-3 rounded-lg border border-blue-200">
             <span className="font-black text-blue-600">🧵 Tailor</span>

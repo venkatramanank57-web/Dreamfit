@@ -28,6 +28,10 @@ import tailorRoutes from "./routes/tailor.routes.js";
 // ✅ NOTIFICATION ROUTES
 import notificationRoutes from "./routes/notification.routes.js";
 
+// ✅ NEW: CUTTING MASTER & STORE KEEPER ROUTES
+import cuttingMasterRoutes from "./routes/cuttingMaster.routes.js";
+import storeKeeperRoutes from "./routes/storeKeeper.routes.js";
+
 // Load env variables
 dotenv.config();
 
@@ -125,6 +129,8 @@ app.get("/", (req, res) => {
       garments: "/api/garments",
       works: "/api/works",
       tailors: "/api/tailors",
+      cuttingMasters: "/api/cutting-masters",
+      storeKeepers: "/api/store-keepers",
       notifications: "/api/notifications",
     }
   });
@@ -176,6 +182,12 @@ app.use("/api/tailors", tailorRoutes);
 
 // 🔔 NOTIFICATION ROUTES - Protected
 app.use("/api/notifications", notificationRoutes);
+
+// ✅ NEW: CUTTING MASTER ROUTES - Protected
+app.use("/api/cutting-masters", cuttingMasterRoutes);
+
+// ✅ NEW: STORE KEEPER ROUTES - Protected
+app.use("/api/store-keepers", storeKeeperRoutes);
 
 // ==================== 404 HANDLER ====================
 app.use((req, res) => {
@@ -384,6 +396,24 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 PUT    /api/tailors/:id          - Update tailor`);
   console.log(`   🔒 PATCH  /api/tailors/:id/leave    - Update leave status`);
   console.log(`   🔒 DEL    /api/tailors/:id          - Delete tailor`);
+
+  // ✅ NEW: CUTTING MASTER ROUTES
+  console.log(`\n✂️ CUTTING MASTER ROUTES:`);
+  console.log(`   🔒 POST   /api/cutting-masters      - Create new cutting master`);
+  console.log(`   🔒 GET    /api/cutting-masters/stats - Get cutting master statistics`);
+  console.log(`   🔒 GET    /api/cutting-masters      - Get all cutting masters (with filters)`);
+  console.log(`   🔒 GET    /api/cutting-masters/:id  - Get cutting master by ID`);
+  console.log(`   🔒 PUT    /api/cutting-masters/:id  - Update cutting master`);
+  console.log(`   🔒 DEL    /api/cutting-masters/:id  - Delete cutting master`);
+
+  // ✅ NEW: STORE KEEPER ROUTES
+  console.log(`\n🏪 STORE KEEPER ROUTES:`);
+  console.log(`   🔒 POST   /api/store-keepers        - Create new store keeper`);
+  console.log(`   🔒 GET    /api/store-keepers/stats  - Get store keeper statistics`);
+  console.log(`   🔒 GET    /api/store-keepers        - Get all store keepers (with filters)`);
+  console.log(`   🔒 GET    /api/store-keepers/:id    - Get store keeper by ID`);
+  console.log(`   🔒 PUT    /api/store-keepers/:id    - Update store keeper`);
+  console.log(`   🔒 DEL    /api/store-keepers/:id    - Delete store keeper`);
   
   // Notification Routes
   console.log(`\n   🔔 NOTIFICATION ROUTES:`);
@@ -392,8 +422,8 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 PATCH  /api/notifications/mark-all-read - Mark all as read`);
   
   console.log("-".repeat(60));
-  console.log(`\n📊 TOTAL ENDPOINTS: 70+`);
+  console.log(`\n📊 TOTAL ENDPOINTS: 80+`);
   console.log("=".repeat(60) + "\n");
 });
 
-export default app; 
+export default app;
