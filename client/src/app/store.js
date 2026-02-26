@@ -14,6 +14,7 @@ import sizeFieldReducer from "../features/sizeField/sizeFieldSlice";
 import orderReducer from "../features/order/orderSlice";
 import garmentReducer from "../features/garment/garmentSlice";
 import workReducer from "../features/work/workSlice";
+import tailorReducer from "../features/tailor/tailorSlice";
 
 // Combine all reducers
 const rootReducer = combineReducers({
@@ -28,6 +29,7 @@ const rootReducer = combineReducers({
   order: orderReducer,
   garment: garmentReducer,
   work: workReducer,
+  tailor: tailorReducer,
 });
 
 // Persist config

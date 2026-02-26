@@ -1,69 +1,88 @@
 import Work from "../models/Work.js";
-import Garment from "../models/Garment.js";
 import Order from "../models/Order.js";
+import Garment from "../models/Garment.js";
 import User from "../models/User.js";
+import Notification from "../models/Notification.js";
 
-// ===== CREATE WORK =====
-export const createWork = async (req, res) => {
-  try {
-    const { order, garment, assignedTo } = req.body;
-
-    // Check if work already exists for this garment
-    const existingWork = await Work.findOne({ garment, isActive: true });
-    if (existingWork) {
-      return res.status(400).json({ message: "Work already exists for this garment" });
-    }
-
-    const work = await Work.create({
-      order,
-      garment,
-      assignedTo,
-      assignedBy: req.user._id,
-      status: "pending",
-    });
-
-    // Update garment with workId
-    await Garment.findByIdAndUpdate(garment, { workId: work._id });
-
-    await work.populate([
-      { path: "order", select: "orderId" },
-      { path: "garment", select: "name garmentId" },
-      { path: "assignedTo", select: "name" },
-      { path: "assignedBy", select: "name" },
-    ]);
-
-    res.status(201).json({
-      message: "Work created successfully",
-      work
-    });
-  } catch (error) {
-    console.error("Create work error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ===== GET ALL WORKS =====
+// ===== GET ALL WORKS (with filters) =====
 export const getAllWorks = async (req, res) => {
   try {
-    const { status, assignedTo, page = 1, limit = 10 } = req.query;
-    
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      dateRange,
+      priority,
+      assignedTo,
+      assignedBy
+    } = req.query;
+
     let query = { isActive: true };
 
-    if (status) query.status = status;
+    // Role-based filtering
+    if (req.user.role === "CUTTING_MASTER") {
+      query.assignedBy = req.user._id;
+    } else if (req.user.role === "TAILOR") {
+      query.assignedTo = req.user._id;
+    }
+
+    // Additional filters
+    if (status && status !== "all") query.status = status;
+    if (priority && priority !== "all") query.priority = priority;
     if (assignedTo) query.assignedTo = assignedTo;
+    if (assignedBy) query.assignedBy = assignedBy;
+
+    // Date range filter
+    if (dateRange && dateRange !== "all") {
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch(dateRange) {
+        case "week":
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case "month":
+          startDate.setMonth(now.getMonth() - 1);
+          break;
+        case "3m":
+          startDate.setMonth(now.getMonth() - 3);
+          break;
+        case "6m":
+          startDate.setMonth(now.getMonth() - 6);
+          break;
+        case "1y":
+          startDate.setFullYear(now.getFullYear() - 1);
+          break;
+      }
+      query.createdAt = { $gte: startDate };
+    }
 
     const total = await Work.countDocuments(query);
     const works = await Work.find(query)
-      .populate("order", "orderId customer")
+      .populate("order", "orderId customer deliveryDate")
       .populate("garment", "name garmentId")
       .populate("assignedTo", "name email")
-      .populate("assignedBy", "name")
+      .populate("assignedBy", "name email")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
+    // Get dashboard stats
+    const stats = {
+      total: await Work.countDocuments({ isActive: true }),
+      pending: await Work.countDocuments({ isActive: true, status: "pending" }),
+      accepted: await Work.countDocuments({ isActive: true, status: "accepted" }),
+      inProgress: await Work.countDocuments({ 
+        isActive: true, 
+        status: { $in: ["cutting", "stitching", "iron"] } 
+      }),
+      ready: await Work.countDocuments({ isActive: true, status: "ready-to-deliver" }),
+      completed: await Work.countDocuments({ isActive: true, status: "completed" })
+    };
+
     res.json({
       works,
+      stats,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -77,51 +96,18 @@ export const getAllWorks = async (req, res) => {
   }
 };
 
-// ===== GET WORKS BY USER =====
-export const getWorksByUser = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { status } = req.query;
-
-    let query = { 
-      assignedTo: userId,
-      isActive: true 
-    };
-
-    if (status) query.status = status;
-
-    const works = await Work.find(query)
-      .populate("order", "orderId")
-      .populate("garment", "name garmentId")
-      .populate("assignedBy", "name")
-      .sort({ createdAt: -1 });
-
-    res.json(works);
-  } catch (error) {
-    console.error("Get works by user error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
 // ===== GET WORK BY ID =====
 export const getWorkById = async (req, res) => {
   try {
     const work = await Work.findById(req.params.id)
+      .populate("order")
+      .populate("garment")
+      .populate("assignedTo", "name email")
+      .populate("assignedBy", "name email")
       .populate({
         path: "order",
-        select: "orderId customer orderDate deliveryDate status",
         populate: { path: "customer", select: "name phone customerId" }
-      })
-      .populate({
-        path: "garment",
-        select: "name garmentId measurements referenceImages status",
-        populate: [
-          { path: "category", select: "name" },
-          { path: "item", select: "name" },
-        ]
-      })
-      .populate("assignedTo", "name email")
-      .populate("assignedBy", "name");
+      });
 
     if (!work) {
       return res.status(404).json({ message: "Work not found" });
@@ -144,75 +130,55 @@ export const updateWorkStatus = async (req, res) => {
       return res.status(404).json({ message: "Work not found" });
     }
 
-    // Update status with timestamps
+    // Validate status transition
+    const validTransitions = {
+      "pending": ["accepted"],
+      "accepted": ["cutting"],
+      "cutting": ["stitching"],
+      "stitching": ["iron"],
+      "iron": ["ready-to-deliver"],
+      "ready-to-deliver": ["completed"]
+    };
+
+    if (!validTransitions[work.status]?.includes(status)) {
+      return res.status(400).json({ 
+        message: `Invalid status transition from ${work.status} to ${status}` 
+      });
+    }
+
+    // Update work
     work.status = status;
-    
-    if (status === "cutting" && !work.startedAt) {
-      work.startedAt = new Date();
-    }
-    
-    if (status === "completed") {
-      work.completedAt = new Date();
-    }
-
-    if (notes) work.notes = notes;
-
+    work.timeline.push({
+      status,
+      updatedBy: req.user._id,
+      updatedAt: new Date(),
+      notes
+    });
     await work.save();
 
-    // Update garment status
-    if (work.garment) {
-      await Garment.findByIdAndUpdate(work.garment, { status });
-    }
-
-    // Check if all garments in order are completed
-    if (status === "completed") {
-      const orderWorks = await Work.find({ 
-        order: work.order,
-        isActive: true 
-      });
+    // If status is "ready-to-deliver", notify storekeeper
+    if (status === "ready-to-deliver") {
+      const order = await Order.findById(work.order).populate("createdBy");
       
-      const allCompleted = orderWorks.every(w => w.status === "completed");
-      
-      if (allCompleted) {
-        await Order.findByIdAndUpdate(work.order, { 
-          status: "delivered" 
+      if (order.createdBy) {
+        await Notification.create({
+          userId: order.createdBy._id,
+          role: "STORE_KEEPER",
+          orderId: work.order,
+          workId: work._id,
+          message: `Work #${work.workId} is ready to deliver`,
+          type: "ready-to-deliver",
+          metadata: {
+            fromRole: req.user.role,
+            previousStatus: req.body.previousStatus || work.status,
+            newStatus: status
+          }
         });
       }
     }
 
-    await work.populate([
-      { path: "order", select: "orderId" },
-      { path: "garment", select: "name" },
-      { path: "assignedTo", select: "name" },
-    ]);
-
     res.json({
       message: "Work status updated successfully",
-      work
-    });
-  } catch (error) {
-    console.error("Update work status error:", error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// ===== UPDATE WORK =====
-export const updateWork = async (req, res) => {
-  try {
-    const { assignedTo, notes } = req.body;
-    const work = await Work.findById(req.params.id);
-
-    if (!work) {
-      return res.status(404).json({ message: "Work not found" });
-    }
-
-    if (assignedTo) work.assignedTo = assignedTo;
-    if (notes) work.notes = notes;
-
-    await work.save();
-
-    res.json({
-      message: "Work updated successfully",
       work
     });
   } catch (error) {
@@ -221,76 +187,87 @@ export const updateWork = async (req, res) => {
   }
 };
 
-// ===== DELETE WORK =====
-export const deleteWork = async (req, res) => {
+// ===== ASSIGN TAILOR =====
+export const assignTailor = async (req, res) => {
   try {
+    const { tailorId } = req.body;
     const work = await Work.findById(req.params.id);
 
     if (!work) {
       return res.status(404).json({ message: "Work not found" });
     }
 
-    // Remove workId from garment
-    if (work.garment) {
-      await Garment.findByIdAndUpdate(work.garment, { 
-        $unset: { workId: 1 } 
-      });
+    // Check if tailor exists and has correct role
+    const tailor = await User.findOne({ _id: tailorId, role: "TAILOR", isActive: true });
+    if (!tailor) {
+      return res.status(400).json({ message: "Invalid tailor" });
     }
 
-    work.isActive = false;
+    work.assignedTo = tailorId;
+    work.timeline.push({
+      status: "assigned-tailor",
+      updatedBy: req.user._id,
+      updatedAt: new Date(),
+      notes: `Assigned to tailor: ${tailor.name}`
+    });
     await work.save();
 
-    res.json({ message: "Work deleted successfully" });
+    // Notify tailor
+    await Notification.create({
+      userId: tailorId,
+      role: "TAILOR",
+      orderId: work.order,
+      workId: work._id,
+      message: `New work assigned to you: ${work.workId}`,
+      type: "new-work",
+      metadata: {
+        fromRole: req.user.role
+      }
+    });
+
+    res.json({
+      message: "Tailor assigned successfully",
+      work
+    });
   } catch (error) {
-    console.error("Delete work error:", error);
+    console.error("Assign tailor error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-// ===== GET WORK STATS =====
-export const getWorkStats = async (req, res) => {
+// ===== GET DASHBOARD STATS =====
+export const getDashboardStats = async (req, res) => {
   try {
-    const totalWorks = await Work.countDocuments({ isActive: true });
-    const pendingWorks = await Work.countDocuments({ status: "pending", isActive: true });
-    const cuttingWorks = await Work.countDocuments({ status: "cutting", isActive: true });
-    const sewingWorks = await Work.countDocuments({ status: "sewing", isActive: true });
-    const completedWorks = await Work.countDocuments({ status: "completed", isActive: true });
+    const { role, _id } = req.user;
+    
+    let query = { isActive: true };
+    
+    if (role === "CUTTING_MASTER") {
+      query.assignedBy = _id;
+    } else if (role === "TAILOR") {
+      query.assignedTo = _id;
+    }
 
-    // Get works by user
-    const worksByUser = await Work.aggregate([
-      { $match: { isActive: true } },
-      { $group: {
-          _id: "$assignedTo",
-          count: { $sum: 1 },
-          pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
-          completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } }
-      }},
-      { $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "user"
-      }},
-      { $unwind: "$user" },
-      { $project: {
-          "user.name": 1,
-          "user.email": 1,
-          count: 1,
-          pending: 1,
-          completed: 1
-      }}
-    ]);
+    const stats = {
+      total: await Work.countDocuments(query),
+      pending: await Work.countDocuments({ ...query, status: "pending" }),
+      accepted: await Work.countDocuments({ ...query, status: "accepted" }),
+      inProgress: await Work.countDocuments({ 
+        ...query, 
+        status: { $in: ["cutting", "stitching", "iron"] } 
+      }),
+      ready: await Work.countDocuments({ ...query, status: "ready-to-deliver" }),
+      completed: await Work.countDocuments({ ...query, status: "completed" }),
+      overdue: await Work.countDocuments({
+        ...query,
+        deliveryDate: { $lt: new Date() },
+        status: { $nin: ["ready-to-deliver", "completed"] }
+      })
+    };
 
-    res.json({
-      total: totalWorks,
-      pending: pendingWorks,
-      cutting: cuttingWorks,
-      sewing: sewingWorks,
-      completed: completedWorks,
-      byUser: worksByUser
-    });
+    res.json(stats);
   } catch (error) {
-    console.error("Get work stats error:", error);
+    console.error("Get stats error:", error);
     res.status(500).json({ message: error.message });
   }
 };

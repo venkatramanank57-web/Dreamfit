@@ -2,258 +2,207 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
-  Briefcase,
   Search,
   Filter,
-  Eye,
-  Play,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Scissors,
-  Package,
   ChevronLeft,
   ChevronRight,
-  Calendar,
-  User,
+  Eye,
+  Clock,
+  CheckCircle,
   AlertCircle,
-} from "lucide-react"; // Removed SewingPin
-import {
-  fetchAllWorks,
-  fetchWorksByUser,
-  updateWorkStatus,
-  fetchWorkStats,
-} from "../../features/work/workSlice";
+  Scissors,
+  Users,
+} from "lucide-react";
+import { fetchAllWorks, updateWorkStatus, assignTailor } from "../../features/work/workSlice";
+// import { fetchAllTailors } from "../../features/user/userSlice";
 import showToast from "../../utils/toast";
+import StatusBadge from "../../components/common/StatusBadge";
+import AssignTailorModal from "../../components/modals/AssignTailorModal";
 
 export default function WorkPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   
   const { works, stats, pagination, loading } = useSelector((state) => state.work);
+  const { tailors } = useSelector((state) => state.user);
   const { user } = useSelector((state) => state.auth);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [filters, setFilters] = useState({
+    status: "all",
+    dateRange: "all",
+    priority: "all",
+    search: ""
+  });
   const [currentPage, setCurrentPage] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedWork, setSelectedWork] = useState(null);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [statusNotes, setStatusNotes] = useState("");
+  const [showStatusMenu, setShowStatusMenu] = useState(null);
 
+  const isCuttingMaster = user?.role === "CUTTING_MASTER";
   const isAdmin = user?.role === "ADMIN";
   const isStoreKeeper = user?.role === "STORE_KEEPER";
-  const isCuttingMaster = user?.role === "CUTTING_MASTER";
 
-  // Debounce search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-      setCurrentPage(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Fetch works based on role
-  useEffect(() => {
+    dispatch(fetchAllWorks({ page: currentPage, ...filters }));
     if (isCuttingMaster) {
-      // Cutting Master sees only their assigned works
-      dispatch(fetchWorksByUser({ 
-        userId: user._id, 
-        status: statusFilter !== "all" ? statusFilter : "" 
-      }));
-    } else {
-      // Admin and Store Keeper see all works
-      dispatch(fetchAllWorks({
-        page: currentPage,
-        search: debouncedSearch,
-        status: statusFilter !== "all" ? statusFilter : "",
-      }));
+      dispatch(fetchAllTailors());
     }
-    
-    // Fetch stats for admin/store keeper
-    if (isAdmin || isStoreKeeper) {
-      dispatch(fetchWorkStats());
-    }
-  }, [dispatch, currentPage, debouncedSearch, statusFilter, user, isCuttingMaster]);
+  }, [dispatch, currentPage, filters]);
 
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setCurrentPage(1);
   };
 
-  const handleViewWork = (id) => {
-    navigate(`/admin/works/${id}`);
+  const handleViewWork = (workId) => {
+    navigate(`/admin/works/${workId}`);
   };
 
-  const handleStatusUpdate = (work) => {
-    setSelectedWork(work);
-    setStatusNotes(work.notes || "");
-    setShowStatusModal(true);
-  };
-
-  const submitStatusUpdate = async () => {
-    if (!selectedWork) return;
-
+  const handleStatusUpdate = async (workId, newStatus) => {
     try {
-      let newStatus = "";
-      switch (selectedWork.status) {
-        case "pending":
-          newStatus = "cutting";
-          break;
-        case "cutting":
-          newStatus = "sewing";
-          break;
-        case "sewing":
-          newStatus = "completed";
-          break;
-        default:
-          return;
-      }
-
-      await dispatch(updateWorkStatus({
-        id: selectedWork._id,
-        status: newStatus,
-        notes: statusNotes,
-      })).unwrap();
-
-      showToast.success(`Work status updated to ${newStatus}`);
-      setShowStatusModal(false);
-      setSelectedWork(null);
-      setStatusNotes("");
+      await dispatch(updateWorkStatus({ id: workId, status: newStatus })).unwrap();
+      showToast.success(`Status updated to ${newStatus}`);
+      setShowStatusMenu(null);
     } catch (error) {
-      showToast.error("Failed to update work status");
+      showToast.error("Failed to update status");
     }
   };
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      pending: { 
-        bg: "bg-yellow-100", 
-        text: "text-yellow-700", 
-        label: "Pending",
-        icon: Clock,
-        nextAction: "Start Cutting",
-        nextColor: "bg-blue-600",
-      },
-      cutting: { 
-        bg: "bg-blue-100", 
-        text: "text-blue-700", 
-        label: "Cutting",
-        icon: Scissors,
-        nextAction: "Start Sewing",
-        nextColor: "bg-purple-600",
-      },
-      sewing: { 
-        bg: "bg-purple-100", 
-        text: "text-purple-700", 
-        label: "Sewing",
-        icon: Package, // Changed from SewingPin to Package
-        nextAction: "Mark Complete",
-        nextColor: "bg-green-600",
-      },
-      completed: { 
-        bg: "bg-green-100", 
-        text: "text-green-700", 
-        label: "Completed",
-        icon: CheckCircle,
-        nextAction: null,
-        nextColor: null,
-      },
+  const handleAssignTailor = (work) => {
+    setSelectedWork(work);
+    setShowAssignModal(true);
+  };
+
+  const handleTailorAssigned = async (workId, tailorId) => {
+    try {
+      await dispatch(assignTailor({ id: workId, tailorId })).unwrap();
+      showToast.success("Tailor assigned successfully");
+      setShowAssignModal(false);
+      setSelectedWork(null);
+    } catch (error) {
+      showToast.error("Failed to assign tailor");
+    }
+  };
+
+  const getStatusOptions = (currentStatus) => {
+    const flow = {
+      pending: ["accepted"],
+      accepted: ["cutting"],
+      cutting: ["stitching"],
+      stitching: ["iron"],
+      iron: ["ready-to-deliver"],
+      "ready-to-deliver": ["completed"]
     };
-    return statusConfig[status] || statusConfig.pending;
-  };
-
-  const getPriorityBadge = (priority) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 text-red-700";
-      case "normal":
-        return "bg-blue-100 text-blue-700";
-      case "low":
-        return "bg-green-100 text-green-700";
-      default:
-        return "bg-slate-100 text-slate-700";
-    }
+    return flow[currentStatus] || [];
   };
 
   const statusOptions = [
     { value: "all", label: "All Status" },
-    { value: "pending", label: "Pending" },
-    { value: "cutting", label: "Cutting" },
-    { value: "sewing", label: "Sewing" },
-    { value: "completed", label: "Completed" },
+    { value: "pending", label: "Pending", color: "yellow" },
+    { value: "accepted", label: "Accepted", color: "blue" },
+    { value: "cutting", label: "Cutting", color: "purple" },
+    { value: "stitching", label: "Stitching", color: "indigo" },
+    { value: "iron", label: "Iron", color: "orange" },
+    { value: "ready-to-deliver", label: "Ready to Deliver", color: "green" },
+    { value: "completed", label: "Completed", color: "emerald" }
+  ];
+
+  const dateRanges = [
+    { value: "all", label: "All Time" },
+    { value: "week", label: "This Week" },
+    { value: "month", label: "This Month" },
+    { value: "3m", label: "3 Months" },
+    { value: "6m", label: "6 Months" },
+    { value: "1y", label: "1 Year" }
+  ];
+
+  const priorityOptions = [
+    { value: "all", label: "All Priority" },
+    { value: "high", label: "High", color: "red" },
+    { value: "normal", label: "Normal", color: "blue" },
+    { value: "low", label: "Low", color: "green" }
   ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-        <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase flex items-center gap-3">
-          <Briefcase size={32} className="text-blue-600" />
-          Work Assignments
-        </h1>
-        <p className="text-slate-500 font-medium">
-          {isCuttingMaster 
-            ? "Manage your assigned work tasks" 
-            : "Track and manage all work assignments"}
-        </p>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <p className="text-sm text-slate-500">Total Works</p>
+          <p className="text-3xl font-black text-slate-800">{stats?.total || 0}</p>
+        </div>
+        <div className="bg-yellow-50 p-6 rounded-2xl shadow-sm border border-yellow-100">
+          <p className="text-sm text-yellow-600">Pending</p>
+          <p className="text-3xl font-black text-yellow-700">{stats?.pending || 0}</p>
+        </div>
+        <div className="bg-blue-50 p-6 rounded-2xl shadow-sm border border-blue-100">
+          <p className="text-sm text-blue-600">Accepted</p>
+          <p className="text-3xl font-black text-blue-700">{stats?.accepted || 0}</p>
+        </div>
+        <div className="bg-purple-50 p-6 rounded-2xl shadow-sm border border-purple-100">
+          <p className="text-sm text-purple-600">In Progress</p>
+          <p className="text-3xl font-black text-purple-700">{stats?.inProgress || 0}</p>
+        </div>
+        <div className="bg-green-50 p-6 rounded-2xl shadow-sm border border-green-100">
+          <p className="text-sm text-green-600">Ready</p>
+          <p className="text-3xl font-black text-green-700">{stats?.ready || 0}</p>
+        </div>
+        <div className="bg-emerald-50 p-6 rounded-2xl shadow-sm border border-emerald-100">
+          <p className="text-sm text-emerald-600">Completed</p>
+          <p className="text-3xl font-black text-emerald-700">{stats?.completed || 0}</p>
+        </div>
       </div>
 
-      {/* Stats Cards (Admin/Store Keeper only) */}
-      {(isAdmin || isStoreKeeper) && stats && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
-            <p className="text-sm text-slate-400 mb-1">Total Works</p>
-            <p className="text-2xl font-black text-slate-800">{stats.total || 0}</p>
-          </div>
-          <div className="bg-yellow-50 rounded-xl p-4 border border-yellow-100">
-            <p className="text-sm text-yellow-600 mb-1">Pending</p>
-            <p className="text-2xl font-black text-yellow-700">{stats.pending || 0}</p>
-          </div>
-          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-            <p className="text-sm text-blue-600 mb-1">Cutting</p>
-            <p className="text-2xl font-black text-blue-700">{stats.cutting || 0}</p>
-          </div>
-          <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
-            <p className="text-sm text-purple-600 mb-1">Sewing</p>
-            <p className="text-2xl font-black text-purple-700">{stats.sewing || 0}</p>
-          </div>
-          <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-            <p className="text-sm text-green-600 mb-1">Completed</p>
-            <p className="text-2xl font-black text-green-700">{stats.completed || 0}</p>
-          </div>
-        </div>
-      )}
+      {/* Header */}
+      <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+        <h1 className="text-3xl font-black text-slate-800 tracking-tighter uppercase">
+          Work Management
+        </h1>
+        <p className="text-slate-500 font-medium">Track and manage all production works</p>
+      </div>
 
-      {/* Search and Filter Bar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full md:w-96">
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="relative">
           <Search className="absolute left-4 top-3.5 text-slate-400" size={20} />
           <input
             type="text"
-            placeholder="Search by Work ID or Garment..."
-            value={searchTerm}
-            onChange={handleSearch}
+            placeholder="Search by Work ID..."
+            value={filters.search}
+            onChange={(e) => handleFilterChange("search", e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
           />
         </div>
 
-        <div className="flex gap-3 w-full md:w-auto">
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="px-4 py-3 bg-white border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-          >
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select
+          value={filters.status}
+          onChange={(e) => handleFilterChange("status", e.target.value)}
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+        >
+          {statusOptions.map(option => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={filters.dateRange}
+          onChange={(e) => handleFilterChange("dateRange", e.target.value)}
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+        >
+          {dateRanges.map(range => (
+            <option key={range.value} value={range.value}>{range.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={filters.priority}
+          onChange={(e) => handleFilterChange("priority", e.target.value)}
+          className="px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all"
+        >
+          {priorityOptions.map(option => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Works Table */}
@@ -272,7 +221,7 @@ export default function WorkPage() {
                   Garment
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
-                  Assigned To
+                  Delivery Date
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
                   Priority
@@ -281,7 +230,7 @@ export default function WorkPage() {
                   Status
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
-                  Started
+                  Tailor
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
                   Actions
@@ -297,85 +246,96 @@ export default function WorkPage() {
                   </td>
                 </tr>
               ) : works?.length > 0 ? (
-                works.map((work) => {
-                  const statusBadge = getStatusBadge(work.status);
-                  const StatusIcon = statusBadge.icon;
-                  const priorityBadge = getPriorityBadge(work.garment?.priority || "normal");
-                  
-                  return (
-                    <tr key={work._id} className="hover:bg-slate-50 transition-all">
-                      <td className="px-6 py-4 font-mono font-bold text-blue-600">
-                        {work.workId || work._id.slice(-6)}
-                      </td>
-                      <td className="px-6 py-4 font-mono text-slate-600">
-                        {work.order?.orderId || "N/A"}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium text-slate-800">{work.garment?.name || "N/A"}</p>
-                          <p className="text-xs text-slate-400">{work.garment?.garmentId || ""}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <User size={14} className="text-slate-400" />
-                          <span>{work.assignedTo?.name || "Unassigned"}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${priorityBadge}`}>
-                          {work.garment?.priority || "normal"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <StatusIcon size={16} className={statusBadge.text} />
-                          <span className={`text-xs px-2 py-1 rounded-full ${statusBadge.bg} ${statusBadge.text}`}>
-                            {statusBadge.label}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600">
-                        {work.startedAt 
-                          ? new Date(work.startedAt).toLocaleDateString()
-                          : "-"
-                        }
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                works.map((work) => (
+                  <tr key={work._id} className="hover:bg-slate-50 transition-all">
+                    <td className="px-6 py-4 font-mono font-bold text-blue-600">
+                      {work.workId}
+                    </td>
+                    <td className="px-6 py-4 font-mono text-slate-600">
+                      {work.order?.orderId}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-slate-800">{work.garment?.name}</p>
+                        <p className="text-xs text-slate-400">{work.garment?.garmentId}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {new Date(work.deliveryDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        work.priority === 'high' ? 'bg-red-100 text-red-700' :
+                        work.priority === 'low' ? 'bg-green-100 text-green-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {work.priority}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="relative">
+                        <button
+                          onClick={() => isCuttingMaster && setShowStatusMenu(showStatusMenu === work._id ? null : work._id)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            work.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            work.status === 'accepted' ? 'bg-blue-100 text-blue-700' :
+                            work.status === 'cutting' ? 'bg-purple-100 text-purple-700' :
+                            work.status === 'stitching' ? 'bg-indigo-100 text-indigo-700' :
+                            work.status === 'iron' ? 'bg-orange-100 text-orange-700' :
+                            work.status === 'ready-to-deliver' ? 'bg-green-100 text-green-700' :
+                            'bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          {work.status?.replace('-', ' ')}
+                        </button>
+
+                        {isCuttingMaster && showStatusMenu === work._id && (
+                          <div className="absolute z-10 mt-1 w-40 bg-white rounded-lg shadow-lg border border-slate-200">
+                            {getStatusOptions(work.status).map(status => (
+                              <button
+                                key={status}
+                                onClick={() => handleStatusUpdate(work._id, status)}
+                                className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 first:rounded-t-lg last:rounded-b-lg"
+                              >
+                                {status.replace('-', ' ')}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {work.assignedTo ? (
+                        <span className="text-sm text-slate-600">{work.assignedTo.name}</span>
+                      ) : (
+                        isCuttingMaster && (
                           <button
-                            onClick={() => handleViewWork(work._id)}
-                            className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200"
-                            title="View Details"
+                            onClick={() => handleAssignTailor(work)}
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
                           >
-                            <Eye size={16} />
+                            <Users size={14} />
+                            Assign Tailor
                           </button>
-                          
-                          {work.status !== "completed" && (
-                            <button
-                              onClick={() => handleStatusUpdate(work)}
-                              className={`p-2 rounded-lg text-white ${statusBadge.nextColor} hover:opacity-90`}
-                              title={statusBadge.nextAction || ""}
-                            >
-                              <Play size={16} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        )
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => handleViewWork(work._id)}
+                        className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200"
+                        title="View Details"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
               ) : (
                 <tr>
                   <td colSpan="8" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center">
-                      <Briefcase size={48} className="text-slate-300 mb-4" />
-                      <p className="text-slate-500 text-lg">No work assignments found</p>
-                      <p className="text-slate-400 text-sm mt-1">
-                        {isCuttingMaster 
-                          ? "You don't have any pending work" 
-                          : "Create orders to generate work assignments"}
-                      </p>
+                      <Clock size={48} className="text-slate-300 mb-4" />
+                      <p className="text-slate-500 text-lg">No works found</p>
                     </div>
                   </td>
                 </tr>
@@ -384,15 +344,15 @@ export default function WorkPage() {
           </table>
         </div>
 
-        {/* Pagination (Admin/Store Keeper only) */}
-        {(isAdmin || isStoreKeeper) && pagination?.pages > 1 && (
+        {/* Pagination */}
+        {pagination?.pages > 1 && (
           <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between">
             <div className="text-sm text-slate-500">
               Showing page {pagination.page} of {pagination.pages}
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentPage(currentPage - 1)}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
                 className={`p-2 rounded-lg ${
                   currentPage === 1
@@ -423,17 +383,14 @@ export default function WorkPage() {
                       {pageNum}
                     </button>
                   );
-                } else if (
-                  pageNum === currentPage - 2 ||
-                  pageNum === currentPage + 2
-                ) {
+                } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
                   return <span key={pageNum} className="text-slate-400">...</span>;
                 }
                 return null;
               })}
               
               <button
-                onClick={() => setCurrentPage(currentPage + 1)}
+                onClick={() => setCurrentPage(prev => Math.min(pagination.pages, prev + 1))}
                 disabled={currentPage === pagination.pages}
                 className={`p-2 rounded-lg ${
                   currentPage === pagination.pages
@@ -448,92 +405,17 @@ export default function WorkPage() {
         )}
       </div>
 
-      {/* Status Update Modal */}
-      {showStatusModal && selectedWork && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="p-6 border-b border-slate-100">
-              <h2 className="text-xl font-black text-slate-800">Update Work Status</h2>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="bg-slate-50 p-4 rounded-xl">
-                <p className="text-sm text-slate-500 mb-1">Work ID</p>
-                <p className="font-mono font-bold text-blue-600">
-                  {selectedWork.workId || selectedWork._id.slice(-6)}
-                </p>
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-xl">
-                <p className="text-sm text-slate-500 mb-1">Garment</p>
-                <p className="font-bold text-slate-800">{selectedWork.garment?.name}</p>
-                <p className="text-xs text-slate-400 mt-1">{selectedWork.garment?.garmentId}</p>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
-                <span className="text-sm font-medium text-blue-700">Current Status</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  getStatusBadge(selectedWork.status).bg
-                } ${getStatusBadge(selectedWork.status).text}`}>
-                  {getStatusBadge(selectedWork.status).label}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl">
-                <span className="text-sm font-medium text-green-700">Next Status</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  getStatusBadge(
-                    selectedWork.status === "pending" ? "cutting" :
-                    selectedWork.status === "cutting" ? "sewing" :
-                    "completed"
-                  ).bg
-                } ${
-                  getStatusBadge(
-                    selectedWork.status === "pending" ? "cutting" :
-                    selectedWork.status === "cutting" ? "sewing" :
-                    "completed"
-                  ).text
-                }`}>
-                  {selectedWork.status === "pending" ? "Cutting" :
-                   selectedWork.status === "cutting" ? "Sewing" :
-                   "Completed"}
-                </span>
-              </div>
-
-              <div>
-                <label className="block text-xs font-black uppercase text-slate-500 mb-2">
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={statusNotes}
-                  onChange={(e) => setStatusNotes(e.target.value)}
-                  rows="3"
-                  placeholder="Add any notes about this work..."
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={submitStatusUpdate}
-                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-black hover:bg-green-700 transition-all"
-                >
-                  Confirm & Update
-                </button>
-                <button
-                  onClick={() => {
-                    setShowStatusModal(false);
-                    setSelectedWork(null);
-                    setStatusNotes("");
-                  }}
-                  className="flex-1 px-6 py-3 bg-slate-200 text-slate-700 rounded-xl font-black hover:bg-slate-300 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Assign Tailor Modal */}
+      {showAssignModal && selectedWork && (
+        <AssignTailorModal
+          work={selectedWork}
+          tailors={tailors}
+          onClose={() => {
+            setShowAssignModal(false);
+            setSelectedWork(null);
+          }}
+          onAssign={handleTailorAssigned}
+        />
       )}
     </div>
   );

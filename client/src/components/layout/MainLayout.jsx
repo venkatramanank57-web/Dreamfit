@@ -3,22 +3,29 @@ import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, ShoppingCart, Scissors, Users, Landmark, 
   Package, Settings, Bell, Search, ChevronDown, 
-  ChevronRight, LogOut, UserCircle, Briefcase, Store, Ruler
+  ChevronRight, LogOut, UserCircle, Briefcase, Store, Ruler, X,
+  Calendar, Clock, CheckSquare, BarChart3, FileText, Truck,
+  HelpCircle, BookOpen, Award, Gift, CreditCard, Shield,
+  Flag, Target, TrendingUp, UserPlus, UserCheck, UserX
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../features/auth/authSlice";
+import NotificationBell from "../common/NotificationBell";
 
 export default function MainLayout() {
   const { user } = useSelector((state) => state.auth);
   const [bankingOpen, setBankingOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleLogout = () => {
-    dispatch(logout());
-    navigate("/");
+    if (window.confirm("Are you sure you want to logout?")) {
+      dispatch(logout());
+      navigate("/");
+    }
   };
 
   // Role verification
@@ -28,8 +35,8 @@ export default function MainLayout() {
   
   // ✅ Updated Permissions:
   // Admin: Everything
-  // Store Keeper: Banking, Customers, Products, Shop Keeper
-  // Cutting Master: Only Dashboard, Work, Tailors (NO Orders)
+  // Store Keeper: Banking, Customers, Products, Shop Keeper, Reports (limited)
+  // Cutting Master: Dashboard, Works, Tailors, Measurements (NO Orders, NO Products)
 
   // Banking access - Admin AND Store Keeper
   const canViewBanking = isAdmin || isStoreKeeper;
@@ -37,7 +44,7 @@ export default function MainLayout() {
   // Customers access - Admin and Store Keeper only
   const canViewCustomers = isAdmin || isStoreKeeper;
 
-  // Staff access (formerly Manager) - Admin only
+  // Staff access - Admin only
   const canViewStaff = isAdmin;
 
   // Shop Keeper access - Admin and Store Keeper
@@ -49,11 +56,28 @@ export default function MainLayout() {
   // Orders access - Admin and Store Keeper only (NOT Cutting Master)
   const canViewOrders = isAdmin || isStoreKeeper;
 
-  // Measurement access - Admin, Store Keeper, and Cutting Master (NEW)
+  // Works access - Everyone can see
+  const canViewWorks = true;
+
+  // Measurement access - Admin, Store Keeper, and Cutting Master
   const canViewMeasurement = isAdmin || isStoreKeeper || isCuttingMaster;
 
+  // Tailors access - Everyone can see
+  const canViewTailors = true;
+
+  // Reports access - Admin and Store Keeper
+  const canViewReports = isAdmin || isStoreKeeper;
+
+  // Settings access - Admin only
+  const canViewSettings = isAdmin;
+
   // Current active link style check
-  const isActive = (path) => location.pathname.includes(path);
+  const isActive = (path) => {
+    if (path === '#') return false;
+    return location.pathname.includes(path) || 
+           (path.includes('banking') && location.pathname.includes('banking')) ||
+           (path.includes('reports') && location.pathname.includes('reports'));
+  };
 
   // Role path for navigation
   const rolePath = user?.role === "ADMIN" ? "admin" : 
@@ -64,34 +88,126 @@ export default function MainLayout() {
   const getNavigationItems = () => {
     const items = [
       // Dashboard - Everyone can see
-      { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: `/${rolePath}/dashboard`, show: true },
+      { 
+        id: 'dashboard', 
+        icon: LayoutDashboard, 
+        label: 'Dashboard', 
+        path: `/${rolePath}/dashboard`, 
+        show: true,
+        description: 'Overview and statistics'
+      },
       
       // Orders - Admin and Store Keeper only (NOT Cutting Master)
-      { id: 'orders', icon: ShoppingCart, label: 'Orders', path: `/${rolePath}/orders`, show: canViewOrders },
+      { 
+        id: 'orders', 
+        icon: ShoppingCart, 
+        label: 'Orders', 
+        path: `/${rolePath}/orders`, 
+        show: canViewOrders,
+        description: 'Manage customer orders'
+      },
       
-      // Work - Everyone can see
-      { id: 'work', icon: Briefcase, label: 'Works', path: `/${rolePath}/work`, show: true },
+      // Works - Everyone can see
+      // { 
+      //   id: 'works', 
+      //   icon: Briefcase, 
+      //   label: 'Works', 
+      //   path: `/${rolePath}/works`, 
+      //   show: canViewWorks,
+      //   description: 'Production work management'
+      // },
       
-      // Measurement - Admin, Store Keeper, and Cutting Master (NEW - Simple Link, No Dropdown)
-      { id: 'measurements', icon: Ruler, label: 'Measurements', path: `/${rolePath}/measurements`, show: canViewMeasurement },
+      // Tailors - Everyone can see
+      { 
+        id: 'tailors', 
+        icon: Scissors, 
+        label: 'Tailors', 
+        path: `/${rolePath}/tailors`, 
+        show: canViewTailors,
+        description: 'Manage tailor profiles and assignments'
+      },
+      
+      // Measurements - Admin, Store Keeper, and Cutting Master
+      { 
+        id: 'measurements', 
+        icon: Ruler, 
+        label: 'Measurements', 
+        path: `/${rolePath}/measurements`, 
+        show: canViewMeasurement,
+        description: 'Size templates and measurements'
+      },
       
       // Products - Admin and Store Keeper only
-      { id: 'products', icon: Package, label: 'Products', path: `/${rolePath}/products`, show: canViewProducts },
+      { 
+        id: 'products', 
+        icon: Package, 
+        label: 'Products', 
+        path: `/${rolePath}/products`, 
+        show: canViewProducts,
+        description: 'Manage fabrics, categories, items'
+      },
       
       // Customers - Admin and Store Keeper only
-      { id: 'customers', icon: Users, label: 'Customers', path: `/${rolePath}/customers`, show: canViewCustomers },
+      { 
+        id: 'customers', 
+        icon: Users, 
+        label: 'Customers', 
+        path: `/${rolePath}/customers`, 
+        show: canViewCustomers,
+        description: 'Customer management'
+      },
       
       // Shop Keeper - Admin and Store Keeper
-      { id: 'shopkeeper', icon: Store, label: 'Shop Keeper', path: `/${rolePath}/shopkeeper`, show: canViewShopKeeper },
+      { 
+        id: 'shopkeeper', 
+        icon: Store, 
+        label: 'Shop Keeper', 
+        path: `/${rolePath}/shopkeeper`, 
+        show: canViewShopKeeper,
+        description: 'Shop operations'
+      },
       
       // Banking - Admin and Store Keeper both can see (Dropdown)
-      { id: 'banking', icon: Landmark, label: 'Banking', path: '#', show: canViewBanking, isDropdown: true },
+      { 
+        id: 'banking', 
+        icon: Landmark, 
+        label: 'Banking', 
+        path: '#', 
+        show: canViewBanking, 
+        isDropdown: true,
+        description: 'Financial management'
+      },
       
-      // Tailors Panels - Everyone can see (including Cutting Master)
-      { id: 'tailors', icon: Scissors, label: 'Tailors Panels', path: '/tailors', show: true },
+      // Reports - Admin and Store Keeper
+      { 
+        id: 'reports', 
+        icon: BarChart3, 
+        label: 'Reports', 
+        path: '#', 
+        show: canViewReports, 
+        isDropdown: true,
+        description: 'Analytics and reports'
+      },
       
       // Staff - Admin only
-      { id: 'staff', icon: UserCircle, label: 'Staffs', path: `/${rolePath}/staff`, show: canViewStaff },
+      { 
+        id: 'staff', 
+        icon: UserCircle, 
+        label: 'Staff', 
+        path: `/${rolePath}/staff`, 
+        show: canViewStaff,
+        description: 'Staff management'
+      },
+      
+      // Settings - Admin only
+      { 
+        id: 'settings', 
+        icon: Settings, 
+        label: 'Settings', 
+        path: `/${rolePath}/settings`, 
+        show: canViewSettings,
+        description: 'System configuration'
+      },
     ];
     
     return items.filter(item => item.show);
@@ -105,13 +221,42 @@ export default function MainLayout() {
     const query = searchQuery.toLowerCase().trim();
     return items.filter(item => 
       item.label.toLowerCase().includes(query) ||
-      item.id.toLowerCase().includes(query)
+      item.id.toLowerCase().includes(query) ||
+      (item.description && item.description.toLowerCase().includes(query))
     );
   };
 
   const filteredNavItems = getFilteredNavItems();
   const navigationItems = getNavigationItems();
   const hasNoResults = filteredNavItems.length === 0 && searchQuery.trim() !== '';
+
+  // Banking sub-items
+  const bankingItems = [
+    { id: 'overview', label: 'Overview', icon: CreditCard, path: `/${rolePath}/banking/overview` },
+    ...(isAdmin ? [
+      { id: 'income', label: 'Income', icon: TrendingUp, path: `/${rolePath}/banking/income` },
+      { id: 'expense', label: 'Expenses', icon: CreditCard, path: `/${rolePath}/banking/expense` },
+      { id: 'transactions', label: 'Transactions', icon: FileText, path: `/${rolePath}/banking/transactions` },
+    ] : []),
+    ...(isStoreKeeper ? [
+      { id: 'inventory', label: 'Inventory', icon: Package, path: `/${rolePath}/banking/inventory` },
+      { id: 'daily-sales', label: 'Daily Sales', icon: TrendingUp, path: `/${rolePath}/banking/daily-sales` },
+    ] : []),
+  ];
+
+  // Reports sub-items
+  const reportsItems = [
+    { id: 'sales', label: 'Sales Report', icon: TrendingUp, path: `/${rolePath}/reports/sales` },
+    { id: 'production', label: 'Production Report', icon: Briefcase, path: `/${rolePath}/reports/production` },
+    ...(isAdmin ? [
+      { id: 'staff-performance', label: 'Staff Performance', icon: Award, path: `/${rolePath}/reports/staff-performance` },
+      { id: 'financial', label: 'Financial Report', icon: Landmark, path: `/${rolePath}/reports/financial` },
+      { id: 'customer-analytics', label: 'Customer Analytics', icon: Users, path: `/${rolePath}/reports/customer-analytics` },
+    ] : []),
+    ...(isStoreKeeper ? [
+      { id: 'inventory-report', label: 'Inventory Report', icon: Package, path: `/${rolePath}/reports/inventory` },
+    ] : []),
+  ];
 
   return (
     <div className="flex h-screen bg-[#F1F5F9] overflow-hidden font-sans">
@@ -133,7 +278,9 @@ export default function MainLayout() {
               <UserCircle size={24} />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-white truncate w-24 leading-none mb-1">{user?.name || "User"}</span>
+              <span className="text-sm font-bold text-white truncate w-24 leading-none mb-1">
+                {user?.name || "User"}
+              </span>
               <div className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
@@ -143,13 +290,14 @@ export default function MainLayout() {
             </div>
           </div>
           <div className="flex gap-1">
-            <button title="Settings" className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-all">
+            <Link 
+              to={`/${rolePath}/settings`} 
+              title="Settings" 
+              className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-all"
+            >
               <Settings size={18} />
-            </button>
-            <button title="Notifications" className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-all relative">
-              <Bell size={18} />
-              <span className="absolute top-2 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-            </button>
+            </Link>
+            <NotificationBell />
           </div>
         </div>
 
@@ -162,14 +310,14 @@ export default function MainLayout() {
               placeholder="Search menu... (type to filter)" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-slate-600"
+              className="w-full bg-[#1e293b]/50 border border-slate-700 rounded-xl py-2.5 pl-10 pr-10 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all placeholder:text-slate-600 text-white"
             />
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-2.5 text-slate-500 hover:text-white transition-colors"
               >
-                ✕
+                <X size={16} />
               </button>
             )}
           </div>
@@ -200,44 +348,77 @@ export default function MainLayout() {
             filteredNavItems.map((item) => (
               <div key={item.id}>
                 {item.isDropdown ? (
-                  // Banking Dropdown - Admin and Store Keeper
+                  // Dropdown items (Banking, Reports)
                   <div>
                     <button 
-                      onClick={() => setBankingOpen(!bankingOpen)}
-                      className={`w-full nav-link flex justify-between ${bankingOpen ? 'text-white' : ''}`}
+                      onClick={() => {
+                        if (item.id === 'banking') setBankingOpen(!bankingOpen);
+                        if (item.id === 'reports') setReportsOpen(!reportsOpen);
+                      }}
+                      className={`w-full nav-link flex justify-between items-center ${
+                        (item.id === 'banking' && bankingOpen) || 
+                        (item.id === 'reports' && reportsOpen) ? 'text-white' : ''
+                      }`}
+                      title={item.description}
                     >
                       <div className="flex items-center gap-3">
-                        <item.icon size={19} /> <span>{item.label}</span>
+                        <item.icon size={19} /> 
+                        <span>{item.label}</span>
                       </div>
-                      {bankingOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
+                      {(item.id === 'banking' && bankingOpen) || 
+                       (item.id === 'reports' && reportsOpen) ? 
+                        <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                     </button>
                     
-                    {bankingOpen && (
+                    {/* Banking Dropdown */}
+                    {item.id === 'banking' && bankingOpen && (
                       <div className="ml-9 mt-1 space-y-1 border-l border-slate-700 pl-4 py-1">
-                        <Link to={`/${rolePath}/banking/overview`} className="block py-2 text-sm text-slate-500 hover:text-blue-400 transition-colors font-medium">Overview</Link>
-                        
-                        {/* Admin gets full banking access */}
-                        {isAdmin && (
-                          <>
-                            <Link to={`/${rolePath}/banking/income`} className="block py-2 text-sm text-slate-500 hover:text-blue-400 transition-colors font-medium">Income</Link>
-                            <Link to={`/${rolePath}/banking/expense`} className="block py-2 text-sm text-slate-500 hover:text-blue-400 transition-colors font-medium">Expenses</Link>
-                          </>
-                        )}
-                        
-                        {/* Store Keeper gets limited banking */}
-                        {isStoreKeeper && (
-                          <Link to={`/${rolePath}/banking/inventory`} className="block py-2 text-sm text-slate-500 hover:text-blue-400 transition-colors font-medium">Inventory</Link>
-                        )}
+                        {bankingItems.map(subItem => (
+                          <Link 
+                            key={subItem.id}
+                            to={subItem.path} 
+                            className={`flex items-center gap-2 py-2 text-sm transition-colors font-medium ${
+                              location.pathname.includes(subItem.id)
+                                ? 'text-blue-400'
+                                : 'text-slate-500 hover:text-blue-400'
+                            }`}
+                          >
+                            <subItem.icon size={14} />
+                            {subItem.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Reports Dropdown */}
+                    {item.id === 'reports' && reportsOpen && (
+                      <div className="ml-9 mt-1 space-y-1 border-l border-slate-700 pl-4 py-1">
+                        {reportsItems.map(subItem => (
+                          <Link 
+                            key={subItem.id}
+                            to={subItem.path} 
+                            className={`flex items-center gap-2 py-2 text-sm transition-colors font-medium ${
+                              location.pathname.includes(subItem.id)
+                                ? 'text-blue-400'
+                                : 'text-slate-500 hover:text-blue-400'
+                            }`}
+                          >
+                            <subItem.icon size={14} />
+                            {subItem.label}
+                          </Link>
+                        ))}
                       </div>
                     )}
                   </div>
                 ) : (
-                  // Regular Navigation Links (including Measurement)
+                  // Regular Navigation Links
                   <Link 
                     to={item.path} 
-                    className={`nav-link ${isActive(item.id) ? 'active-link' : ''}`}
+                    className={`nav-link ${isActive(item.path) ? 'active-link' : ''}`}
+                    title={item.description}
                   >
-                    <item.icon size={19} /> <span>{item.label}</span>
+                    <item.icon size={19} /> 
+                    <span>{item.label}</span>
                   </Link>
                 )}
               </div>
@@ -245,15 +426,29 @@ export default function MainLayout() {
           )}
         </nav>
 
+        {/* QUICK STATS AT BOTTOM (Optional) */}
+        <div className="px-4 py-3 border-t border-slate-800 bg-[#0F172A]">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center gap-1">
+              <Clock size={12} />
+              <span>{new Date().toLocaleTimeString()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Calendar size={12} />
+              <span>{new Date().toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+
         {/* SIGN OUT AT BOTTOM */}
-        <div className="p-4 mt-auto border-t border-slate-800 bg-[#0F172A]">
-           <button 
+        <div className="p-4 border-t border-slate-800 bg-[#0F172A]">
+          <button 
             onClick={handleLogout}
             className="flex items-center gap-3 text-slate-500 hover:text-red-400 w-full p-3 rounded-xl transition-all hover:bg-red-400/10 group font-bold"
-           >
-             <LogOut size={19} className="group-hover:translate-x-1 transition-transform" /> 
-             <span className="text-sm">Log Out System</span>
-           </button>
+          >
+            <LogOut size={19} className="group-hover:translate-x-1 transition-transform" /> 
+            <span className="text-sm">Log Out System</span>
+          </button>
         </div>
       </aside>
 
@@ -261,17 +456,29 @@ export default function MainLayout() {
       <main className="flex-1 flex flex-col relative overflow-hidden">
         {/* HEADER */}
         <header className="h-16 bg-white border-b border-slate-200 px-8 flex items-center justify-between shadow-sm sticky top-0 z-10">
-           <div className="flex items-center gap-3">
-             <div className="w-2.5 h-2.5 bg-blue-600 rounded-full"></div>
-             <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">
-               {user?.role?.replace('_', ' ')} Control Panel
-             </h2>
-           </div>
-           <div className="flex items-center gap-4">
-             <div className="text-[11px] font-black text-slate-400 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 uppercase tracking-tighter">
-               {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-             </div>
-           </div>
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 bg-blue-600 rounded-full"></div>
+            <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">
+              {user?.role?.replace('_', ' ')} Control Panel
+            </h2>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Quick Actions */}
+            <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600 transition-all">
+              <HelpCircle size={18} />
+            </button>
+            <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600 transition-all">
+              <Bell size={18} />
+            </button>
+            <div className="w-px h-6 bg-slate-200"></div>
+            <div className="text-[11px] font-black text-slate-400 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 uppercase tracking-tighter">
+              {new Date().toLocaleDateString('en-GB', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+              })}
+            </div>
+          </div>
         </header>
         
         {/* DYNAMIC CONTENT AREA */}
@@ -292,6 +499,7 @@ export default function MainLayout() {
           color: #94a3b8;
           font-weight: 500;
           font-size: 0.95rem;
+          cursor: pointer;
         }
         .nav-link:hover {
           color: #ffffff;
@@ -305,12 +513,38 @@ export default function MainLayout() {
         .custom-scrollbar::-webkit-scrollbar {
           width: 5px;
         }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
         .custom-scrollbar::-webkit-scrollbar-thumb {
           background: #cbd5e1;
           border-radius: 10px;
         }
         .custom-scrollbar-hidden::-webkit-scrollbar {
           display: none;
+        }
+        .custom-scrollbar-hidden {
+          scrollbar-width: none;
+        }
+        
+        /* Animation for dropdown */
+        .dropdown-enter {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        .dropdown-enter-active {
+          opacity: 1;
+          transform: translateY(0);
+          transition: opacity 200ms, transform 200ms;
+        }
+        .dropdown-exit {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .dropdown-exit-active {
+          opacity: 0;
+          transform: translateY(-10px);
+          transition: opacity 200ms, transform 200ms;
         }
       `}</style>
     </div>

@@ -40,40 +40,64 @@ import WorkPage from "../Pages/admin/WorkPage";
 import GarmentDetails from "../Pages/admin/GarmentDetails";
 import EditOrder from "../Pages/admin/EditOrder";
 
+// ✅ TAILOR MANAGEMENT COMPONENTS
+import Tailors from "../Pages/admin/Tailors";
+import AddTailor from "../Pages/admin/AddTailor";
+import TailorDetails from "../Pages/admin/TailorDetails";
+import EditTailor from "../Pages/admin/EditTailor";
+
 // Placeholders
 const ManagerDashboard = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
     Manager Panel Ready
   </div>
 );
+
 const StoreKeeperDashboard = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
     Store Keeper Panel Ready
   </div>
 );
+
 const CuttingMasterDashboard = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
     Master Work List
   </div>
 );
+
 const BankingPlaceholder = ({ title }) => (
   <div className="p-8 font-black text-slate-800 uppercase italic font-sans">
     {title} Section
   </div>
 );
+
 const Work = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
     Work Section
   </div>
 );
-const Tailors = () => (
-  <div className="p-8 font-black text-slate-800 uppercase italic">
-    Tailors Section
-  </div>
-);
+
 const ShopKeeper = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
     Shop Keeper Section
+  </div>
+);
+
+const ReportsPlaceholder = ({ title }) => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    {title} - Coming Soon
+  </div>
+);
+
+const Settings = () => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    Settings - Coming Soon
+  </div>
+);
+
+const Notifications = () => (
+  <div className="p-8 font-black text-slate-800 uppercase italic">
+    Notifications Center
   </div>
 );
 
@@ -156,6 +180,12 @@ export default function AppRouter() {
           {/* Garment Details */}
           <Route path="garments/:id" element={<GarmentDetails />} />
           
+          {/* Tailors Management */}
+          <Route path="tailors" element={<Tailors />} />
+          <Route path="tailors/add" element={<AddTailor />} />
+          <Route path="tailors/:id" element={<TailorDetails />} />
+          <Route path="tailors/edit/:id" element={<EditTailor />} />
+          
           {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
@@ -187,13 +217,24 @@ export default function AppRouter() {
           {/* Shop Keeper */}
           <Route path="shopkeeper" element={<ShopKeeper />} />
           
-          {/* Tailors */}
-          <Route path="tailors" element={<Tailors />} />
-          
           {/* Banking */}
           <Route path="banking/overview" element={<BankingPlaceholder title="Admin Banking Overview" />} />
           <Route path="banking/income" element={<BankingPlaceholder title="Income Tracker" />} />
           <Route path="banking/expense" element={<BankingPlaceholder title="Expense Tracker" />} />
+          <Route path="banking/transactions" element={<BankingPlaceholder title="Transactions" />} />
+          
+          {/* Reports */}
+          <Route path="reports/sales" element={<ReportsPlaceholder title="Sales Report" />} />
+          <Route path="reports/production" element={<ReportsPlaceholder title="Production Report" />} />
+          <Route path="reports/staff-performance" element={<ReportsPlaceholder title="Staff Performance" />} />
+          <Route path="reports/financial" element={<ReportsPlaceholder title="Financial Report" />} />
+          <Route path="reports/customer-analytics" element={<ReportsPlaceholder title="Customer Analytics" />} />
+          
+          {/* Settings */}
+          <Route path="settings" element={<Settings />} />
+          
+          {/* Notifications */}
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         {/* 🛡️ STORE KEEPER ROUTES */}
@@ -220,6 +261,12 @@ export default function AppRouter() {
           {/* Garment Details */}
           <Route path="garments/:id" element={<GarmentDetails />} />
           
+          {/* Tailors Management - Store Keeper can view and add tailors */}
+          <Route path="tailors" element={<Tailors />} />
+          <Route path="tailors/add" element={<AddTailor />} />
+          <Route path="tailors/:id" element={<TailorDetails />} />
+          <Route path="tailors/edit/:id" element={<EditTailor />} />
+          
           {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
@@ -237,8 +284,19 @@ export default function AppRouter() {
           <Route path="customers/:id" element={<CustomerDetails />} />
           <Route path="add-customer" element={<AddCustomer />} />
           <Route path="shopkeeper" element={<ShopKeeper />} />
-          <Route path="tailors" element={<Tailors />} />
+          
+          {/* Banking - Limited access for Store Keeper */}
           <Route path="banking/overview" element={<BankingPlaceholder title="Store Keeper Banking Overview" />} />
+          <Route path="banking/inventory" element={<BankingPlaceholder title="Inventory Management" />} />
+          <Route path="banking/daily-sales" element={<BankingPlaceholder title="Daily Sales" />} />
+          
+          {/* Reports - Limited access for Store Keeper */}
+          <Route path="reports/sales" element={<ReportsPlaceholder title="Sales Report" />} />
+          <Route path="reports/inventory" element={<ReportsPlaceholder title="Inventory Report" />} />
+          <Route path="reports/production" element={<ReportsPlaceholder title="Production Report" />} />
+          
+          {/* Notifications */}
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         {/* 🛡️ CUTTING MASTER ROUTES (Restricted) */}
@@ -263,6 +321,10 @@ export default function AppRouter() {
           {/* Garment Details - Cutting Master can view garment details */}
           <Route path="garments/:id" element={<GarmentDetails />} />
           
+          {/* Tailors - Cutting Master can view tailors and update leave status */}
+          <Route path="tailors" element={<Tailors />} />
+          <Route path="tailors/:id" element={<TailorDetails />} />
+          
           {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
@@ -271,7 +333,9 @@ export default function AppRouter() {
           <Route path="measurements/:id" element={<TemplateDetails />} />
           
           <Route path="products" element={<Products />} />
-          <Route path="tailors" element={<Tailors />} />
+          
+          {/* Notifications */}
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         {/* 🚨 404 REDIRECT */}

@@ -1,26 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as workApi from "./workApi";
 
-// ===== ASYNC THUNKS =====
 export const fetchAllWorks = createAsyncThunk(
   "work/fetchAll",
   async (params, { rejectWithValue }) => {
     try {
-      console.log("📡 Fetching works with params:", params);
       const response = await workApi.getAllWorksApi(params);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch works");
-    }
-  }
-);
-
-export const fetchWorksByUser = createAsyncThunk(
-  "work/fetchByUser",
-  async ({ userId, status }, { rejectWithValue }) => {
-    try {
-      console.log(`📡 Fetching works for user: ${userId}`);
-      const response = await workApi.getWorksByUserApi(userId, status);
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || "Failed to fetch works");
@@ -32,7 +17,6 @@ export const fetchWorkById = createAsyncThunk(
   "work/fetchById",
   async (id, { rejectWithValue }) => {
     try {
-      console.log(`📡 Fetching work by ID: ${id}`);
       const response = await workApi.getWorkByIdApi(id);
       return response;
     } catch (error) {
@@ -45,23 +29,22 @@ export const updateWorkStatus = createAsyncThunk(
   "work/updateStatus",
   async ({ id, status, notes }, { rejectWithValue }) => {
     try {
-      console.log(`🔄 Updating work ${id} status to:`, status);
-      const response = await workApi.updateWorkStatusApi(id, status, notes);
+      const response = await workApi.updateWorkStatusApi(id, { status, notes });
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to update work status");
+      return rejectWithValue(error.response?.data?.message || "Failed to update status");
     }
   }
 );
 
-export const fetchWorkStats = createAsyncThunk(
-  "work/fetchStats",
-  async (_, { rejectWithValue }) => {
+export const assignTailor = createAsyncThunk(
+  "work/assignTailor",
+  async ({ id, tailorId }, { rejectWithValue }) => {
     try {
-      const response = await workApi.getWorkStatsApi();
+      const response = await workApi.assignTailorApi(id, { tailorId });
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch work stats");
+      return rejectWithValue(error.response?.data?.message || "Failed to assign tailor");
     }
   }
 );
@@ -71,7 +54,14 @@ const workSlice = createSlice({
   initialState: {
     works: [],
     currentWork: null,
-    stats: null,
+    stats: {
+      total: 0,
+      pending: 0,
+      accepted: 0,
+      inProgress: 0,
+      ready: 0,
+      completed: 0
+    },
     pagination: {
       page: 1,
       limit: 10,
@@ -79,7 +69,7 @@ const workSlice = createSlice({
       pages: 1
     },
     loading: false,
-    error: null,
+    error: null
   },
   reducers: {
     clearCurrentWork: (state) => {
@@ -87,11 +77,10 @@ const workSlice = createSlice({
     },
     clearError: (state) => {
       state.error = null;
-    },
+    }
   },
   extraReducers: (builder) => {
     builder
-      // ===== FETCH ALL WORKS =====
       .addCase(fetchAllWorks.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -99,67 +88,37 @@ const workSlice = createSlice({
       .addCase(fetchAllWorks.fulfilled, (state, action) => {
         state.loading = false;
         state.works = action.payload.works;
+        state.stats = action.payload.stats;
         state.pagination = action.payload.pagination;
-        console.log("✅ Works loaded:", action.payload.works?.length);
       })
       .addCase(fetchAllWorks.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-
-      // ===== FETCH WORKS BY USER =====
-      .addCase(fetchWorksByUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchWorksByUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.works = action.payload;
-        console.log("✅ User works loaded:", action.payload?.length);
-      })
-      .addCase(fetchWorksByUser.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-
-      // ===== FETCH WORK BY ID =====
-      .addCase(fetchWorkById.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.currentWork = null;
-      })
       .addCase(fetchWorkById.fulfilled, (state, action) => {
-        state.loading = false;
         state.currentWork = action.payload;
-        console.log("✅ Work loaded:", action.payload?.workId);
       })
-      .addCase(fetchWorkById.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-        state.currentWork = null;
-      })
-
-      // ===== UPDATE WORK STATUS =====
       .addCase(updateWorkStatus.fulfilled, (state, action) => {
-        const updatedWork = action.payload.work || action.payload;
-        if (updatedWork && updatedWork._id) {
-          const index = state.works.findIndex(w => w._id === updatedWork._id);
-          if (index !== -1) {
-            state.works[index] = updatedWork;
-          }
-          if (state.currentWork?._id === updatedWork._id) {
-            state.currentWork = updatedWork;
-          }
-          console.log("✅ Work status updated:", updatedWork.status);
+        const updatedWork = action.payload.work;
+        const index = state.works.findIndex(w => w._id === updatedWork._id);
+        if (index !== -1) {
+          state.works[index] = updatedWork;
+        }
+        if (state.currentWork?._id === updatedWork._id) {
+          state.currentWork = updatedWork;
         }
       })
-
-      // ===== FETCH WORK STATS =====
-      .addCase(fetchWorkStats.fulfilled, (state, action) => {
-        state.stats = action.payload;
-        console.log("✅ Work stats loaded");
+      .addCase(assignTailor.fulfilled, (state, action) => {
+        const updatedWork = action.payload.work;
+        const index = state.works.findIndex(w => w._id === updatedWork._id);
+        if (index !== -1) {
+          state.works[index] = updatedWork;
+        }
+        if (state.currentWork?._id === updatedWork._id) {
+          state.currentWork = updatedWork;
+        }
       });
-  },
+  }
 });
 
 export const { clearCurrentWork, clearError } = workSlice.actions;

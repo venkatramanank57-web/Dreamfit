@@ -2,6 +2,9 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import morgan from "morgan";
+import compression from "compression";
+import rateLimit from "express-rate-limit";
 import connectDB from "./config/db.js";
 
 // Import Routes
@@ -14,10 +17,16 @@ import itemRoutes from "./routes/item.routes.js";
 import sizeTemplateRoutes from "./routes/sizeTemplate.routes.js";
 import sizeFieldRoutes from "./routes/sizeField.routes.js";
 
-// ✅ NEW ORDER MANAGEMENT ROUTES
+// ✅ ORDER MANAGEMENT ROUTES
 import orderRoutes from "./routes/order.routes.js";
 import garmentRoutes from "./routes/garment.routes.js";
 import workRoutes from "./routes/work.routes.js";
+
+// ✅ TAILOR MANAGEMENT ROUTES
+import tailorRoutes from "./routes/tailor.routes.js";
+
+// ✅ NOTIFICATION ROUTES
+import notificationRoutes from "./routes/notification.routes.js";
 
 // Load env variables
 dotenv.config();
@@ -28,30 +37,110 @@ const app = express();
 // Connect MongoDB
 connectDB();
 
+// ==================== MIDDLEWARE ====================
+
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "unsafe-none" }
+}));
+
+// Compression
+app.use(compression());
+
+// Logging
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("dev"));
+} else {
+  app.use(morgan("combined"));
+}
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to API routes
+app.use("/api/", limiter);
 
 // Body parser
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // CORS configuration
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5000",
+  "https://dreamfit.vercel.app", // Add your production frontend URL
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log("❌ Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    exposedHeaders: ["Content-Range", "X-Content-Range"],
+    maxAge: 600, // 10 minutes
   })
 );
 
-// Test route
+
+
+// Static files (if needed)
+app.use("/uploads", express.static("uploads"));
+
+// ==================== TEST ROUTE ====================
 app.get("/", (req, res) => {
-  res.send("Dreamfit API Running 🚀");
+  res.status(200).json({
+    success: true,
+    message: "🎉 Dreamfit API Running",
+    version: "2.0.0",
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: "/api/auth",
+      customers: "/api/customers",
+      users: "/api/users",
+      fabrics: "/api/fabrics",
+      categories: "/api/categories",
+      items: "/api/items",
+      sizeTemplates: "/api/size-templates",
+      sizeFields: "/api/size-fields",
+      orders: "/api/orders",
+      garments: "/api/garments",
+      works: "/api/works",
+      tailors: "/api/tailors",
+      notifications: "/api/notifications",
+    }
+  });
 });
 
-// ==================== ROUTES ====================
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    database: "connected"
+  });
+});
+
+// ==================== API ROUTES ====================
 
 // 🔐 AUTH ROUTES - Public
 app.use("/api/auth", authRoutes);
@@ -82,35 +171,113 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/garments", garmentRoutes);
 app.use("/api/works", workRoutes);
 
+// ✂️ TAILOR MANAGEMENT ROUTES - Protected
+app.use("/api/tailors", tailorRoutes);
+
+// 🔔 NOTIFICATION ROUTES - Protected
+app.use("/api/notifications", notificationRoutes);
+
 // ==================== 404 HANDLER ====================
 app.use((req, res) => {
   res.status(404).json({ 
+    success: false,
     message: "Route not found",
-    path: req.originalUrl 
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
   });
 });
 
-// ==================== ERROR HANDLER ====================
+// ==================== GLOBAL ERROR HANDLER ====================
 app.use((err, req, res, next) => {
   console.error("❌ Server Error:", err);
-  res.status(500).json({ 
-    message: "Internal server error",
-    error: process.env.NODE_ENV === "development" ? err.message : undefined
+  
+  // Mongoose duplicate key error
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyPattern)[0];
+    return res.status(400).json({
+      success: false,
+      message: `${field} already exists. Please use a different value.`,
+      error: process.env.NODE_ENV === "development" ? err.message : undefined
+    });
+  }
+  
+  // Mongoose validation error
+  if (err.name === "ValidationError") {
+    const errors = Object.values(err.errors).map(e => e.message);
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors
+    });
+  }
+  
+  // JWT errors
+  if (err.name === "JsonWebTokenError") {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token. Please log in again."
+    });
+  }
+  
+  if (err.name === "TokenExpiredError") {
+    return res.status(401).json({
+      success: false,
+      message: "Token expired. Please log in again."
+    });
+  }
+
+  // Default error
+  res.status(err.status || 500).json({ 
+    success: false,
+    message: err.message || "Internal server error",
+    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    timestamp: new Date().toISOString()
   });
 });
 
-// Start server
+// ==================== UNHANDLED REJECTIONS ====================
+process.on("unhandledRejection", (err) => {
+  console.log("❌ UNHANDLED REJECTION! Shutting down...");
+  console.log(err.name, err.message);
+  console.log(err.stack);
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+process.on("uncaughtException", (err) => {
+  console.log("❌ UNCAUGHT EXCEPTION! Shutting down...");
+  console.log(err.name, err.message);
+  console.log(err.stack);
+  process.exit(1);
+});
+
+// ==================== START SERVER ====================
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`\n✅ Available Routes:`);
+const server = app.listen(PORT, () => {
+  console.log("\n" + "=".repeat(60));
+  console.log(`🚀 DREAMFIT ERP BACKEND`);
+  console.log("=".repeat(60));
+  console.log(`📡 Server: http://localhost:${PORT}`);
+  console.log(`🔧 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`💾 Database: MongoDB Connected`);
+  console.log(`⏰ Started: ${new Date().toLocaleString()}`);
+  console.log("=".repeat(60));
+  
+  // ==================== ROUTES LIST ====================
+  console.log(`\n📋 AVAILABLE ROUTES:`);
+  console.log("-".repeat(60));
   
   // Public Routes
   console.log(`\n🔓 PUBLIC ROUTES:`);
-  console.log(`   GET  /`);
-  console.log(`   POST /api/auth/login`);
+  console.log(`   ✅ GET  /`);
+  console.log(`   ✅ GET  /health`);
+  console.log(`   ✅ POST /api/auth/login`);
+  console.log(`   ✅ POST /api/auth/refresh-token`);
+  console.log(`   ✅ POST /api/auth/forgot-password`);
+  console.log(`   ✅ POST /api/auth/reset-password/:token`);
   
   // Customer Routes
   console.log(`\n👤 CUSTOMER ROUTES:`);
@@ -130,6 +297,7 @@ app.listen(PORT, () => {
   console.log(`   🔒 PUT  /api/users/change-password`);
   console.log(`   👑 GET  /api/users/all-staff`);
   console.log(`   👑 POST /api/users/create`);
+  console.log(`   👑 GET  /api/users/role/:role`);
   console.log(`   👑 GET  /api/users/:id`);
   console.log(`   👑 PUT  /api/users/:id`);
   console.log(`   👑 DEL  /api/users/:id`);
@@ -176,29 +344,56 @@ app.listen(PORT, () => {
   console.log(`   🔒 GET  /api/size-fields           - Get all size fields`);
   console.log(`   👑 POST /api/size-fields           - Create size field (Admin only)`);
   
-  // ✅ NEW ORDER MANAGEMENT ROUTES
+  // ORDER MANAGEMENT ROUTES
   console.log(`\n📦 ORDER MANAGEMENT ROUTES:`);
+  
+  // Order Routes
   console.log(`\n   🔥 ORDER ROUTES:`);
-  console.log(`   🔒 POST /api/orders              - Create new order`);
-  console.log(`   🔒 GET  /api/orders              - Get all orders (with filters)`);
-  console.log(`   🔒 GET  /api/orders/:id          - Get order by ID`);
-  console.log(`   🔒 PATCH /api/orders/:id/status  - Update order status`);
-  console.log(`   🔒 DEL  /api/orders/:id          - Delete order`);
+  console.log(`   🔒 POST   /api/orders              - Create new order`);
+  console.log(`   🔒 GET    /api/orders              - Get all orders (with filters)`);
+  console.log(`   🔒 GET    /api/orders/:id          - Get order by ID`);
+  console.log(`   🔒 PATCH  /api/orders/:id/status   - Update order status`);
+  console.log(`   🔒 PUT    /api/orders/:id          - Update order`);
+  console.log(`   🔒 DEL    /api/orders/:id          - Delete order`);
+  console.log(`   🔒 GET    /api/orders/stats        - Get order statistics`);
   
+  // Garment Routes
   console.log(`\n   🧵 GARMENT ROUTES:`);
-  console.log(`   🔒 POST /api/garments/order/:orderId - Create garment (with images)`);
-  console.log(`   🔒 GET  /api/garments/order/:orderId - Get garments by order`);
-  console.log(`   🔒 GET  /api/garments/:id         - Get garment by ID`);
-  console.log(`   🔒 PUT  /api/garments/:id         - Update garment`);
-  console.log(`   🔒 DEL  /api/garments/:id         - Delete garment`);
+  console.log(`   🔒 POST   /api/garments/order/:orderId - Create garment (with images)`);
+  console.log(`   🔒 GET    /api/garments/order/:orderId - Get garments by order`);
+  console.log(`   🔒 GET    /api/garments/:id         - Get garment by ID`);
+  console.log(`   🔒 PUT    /api/garments/:id         - Update garment`);
+  console.log(`   🔒 PATCH  /api/garments/:id/images  - Update garment images`);
+  console.log(`   🔒 DEL    /api/garments/:id/images  - Delete garment image`);
+  console.log(`   🔒 DEL    /api/garments/:id         - Delete garment`);
   
+  // Work Routes
   console.log(`\n   ⚙️ WORK ROUTES:`);
-  console.log(`   🔒 POST /api/works                - Create work assignment`);
-  console.log(`   🔒 GET  /api/works                - Get all works`);
-  console.log(`   🔒 GET  /api/works/user/:userId   - Get works by user (Cutting Master)`);
-  console.log(`   🔒 GET  /api/works/:id            - Get work by ID`);
-  console.log(`   🔒 PATCH /api/works/:id/status    - Update work status`);
-  console.log(`   🔒 DEL  /api/works/:id            - Delete work`);
+  console.log(`   🔒 GET    /api/works                - Get all works (with filters)`);
+  console.log(`   🔒 GET    /api/works/stats          - Get work statistics`);
+  console.log(`   🔒 GET    /api/works/:id            - Get work by ID`);
+  console.log(`   🔒 PATCH  /api/works/:id/status     - Update work status`);
+  console.log(`   🔒 PATCH  /api/works/:id/assign-tailor - Assign tailor`);
   
-  console.log(`\n✅ Total Routes: 45+ endpoints\n`);
+  // ✂️ TAILOR MANAGEMENT ROUTES
+  console.log(`\n✂️ TAILOR MANAGEMENT ROUTES:`);
+  console.log(`   🔒 POST   /api/tailors              - Create new tailor`);
+  console.log(`   🔒 GET    /api/tailors/stats        - Get tailor statistics`);
+  console.log(`   🔒 GET    /api/tailors              - Get all tailors (with filters)`);
+  console.log(`   🔒 GET    /api/tailors/:id          - Get tailor by ID`);
+  console.log(`   🔒 PUT    /api/tailors/:id          - Update tailor`);
+  console.log(`   🔒 PATCH  /api/tailors/:id/leave    - Update leave status`);
+  console.log(`   🔒 DEL    /api/tailors/:id          - Delete tailor`);
+  
+  // Notification Routes
+  console.log(`\n   🔔 NOTIFICATION ROUTES:`);
+  console.log(`   🔒 GET    /api/notifications        - Get user notifications`);
+  console.log(`   🔒 PATCH  /api/notifications/:id/read - Mark as read`);
+  console.log(`   🔒 PATCH  /api/notifications/mark-all-read - Mark all as read`);
+  
+  console.log("-".repeat(60));
+  console.log(`\n📊 TOTAL ENDPOINTS: 70+`);
+  console.log("=".repeat(60) + "\n");
 });
+
+export default app; 

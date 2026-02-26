@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { 
   User, Mail, Lock, Phone, Briefcase, X, Save,
-  AlertCircle, ChevronRight, UserCog
+  AlertCircle, ChevronRight, UserCog, ArrowRight
 } from "lucide-react";
 import { createStaff } from "../../features/user/userSlice";
 import showToast from "../../utils/toast";
@@ -18,11 +18,12 @@ export default function AddStaff() {
     name: "",
     email: "",
     password: "",
-    role: "STORE_KEEPER", // Default role
+    role: "STORE_KEEPER",
     phone: "",
   });
 
   const [errors, setErrors] = useState({});
+  const [selectedRole, setSelectedRole] = useState("STORE_KEEPER");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,6 +32,12 @@ export default function AddStaff() {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
+  };
+
+  const handleRoleChange = (e) => {
+    const newRole = e.target.value;
+    setSelectedRole(newRole);
+    setFormData(prev => ({ ...prev, role: newRole }));
   };
 
   const validateForm = () => {
@@ -49,9 +56,10 @@ export default function AddStaff() {
       }
     }
 
-    if (!formData.password) {
+    // Password required only for Store Keeper (creates User model)
+    if (selectedRole === "STORE_KEEPER" && !formData.password) {
       newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
+    } else if (selectedRole === "STORE_KEEPER" && formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
     }
 
@@ -63,25 +71,62 @@ export default function AddStaff() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // ✅ Role-based redirection logic
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      showToast.error("Please fix the errors in the form");
+
+    // Validate common fields
+    if (!formData.name || !formData.email) {
+      showToast.error("Name and Email are required");
       return;
     }
 
-    try {
-      await dispatch(createStaff(formData)).unwrap();
-      showToast.success("Staff created successfully! 🎉");
-      navigate("/admin/staff"); // Redirect back to staff list
-    } catch (error) {
-      const errorMsg = error || "Failed to create staff";
-      showToast.error(errorMsg);
-      
-      if (errorMsg.includes("email")) {
-        setErrors(prev => ({ ...prev, email: "Email already exists" }));
-      }
+    // Role-based redirection
+    switch(selectedRole) {
+      case "TAILOR":
+        // Redirect to Add Tailor page with pre-filled data
+        showToast.info("Redirecting to Tailor creation page...");
+        setTimeout(() => {
+          navigate("/admin/tailors/add", { 
+            state: { 
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              fromStaff: true // Flag to indicate coming from Staff page
+            }
+          });
+        }, 1000);
+        break;
+
+      case "CUTTING_MASTER":
+        // TODO: Create Cutting Master page later
+        showToast.info("Cutting Master creation page coming soon...");
+        // Future: navigate("/admin/cutting-masters/add", { state: formData });
+        break;
+
+      case "STORE_KEEPER":
+        // Create Store Keeper using User model (existing flow)
+        if (!validateForm()) {
+          showToast.error("Please fix the errors in the form");
+          return;
+        }
+        
+        try {
+          await dispatch(createStaff(formData)).unwrap();
+          showToast.success("Store Keeper created successfully! 🎉");
+          navigate("/admin/staff");
+        } catch (error) {
+          const errorMsg = error || "Failed to create staff";
+          showToast.error(errorMsg);
+          
+          if (errorMsg.includes("email")) {
+            setErrors(prev => ({ ...prev, email: "Email already exists" }));
+          }
+        }
+        break;
+
+      default:
+        break;
     }
   };
 
@@ -89,12 +134,42 @@ export default function AddStaff() {
     navigate("/admin/staff");
   };
 
-  // Role options with Tailor added
+  // Role options
   const roleOptions = [
-    { value: "STORE_KEEPER", label: "Store Keeper", icon: "🛍️" },
-    { value: "CUTTING_MASTER", label: "Cutting Master", icon: "✂️" },
-    { value: "TAILOR", label: "Tailor", icon: "🧵" }, // ✅ New Tailor role
+    { 
+      value: "STORE_KEEPER", 
+      label: "Store Keeper", 
+      icon: "🛍️",
+      description: "Manages inventory and store operations",
+      color: "green",
+      model: "User Model"
+    },
+    { 
+      value: "CUTTING_MASTER", 
+      label: "Cutting Master", 
+      icon: "✂️",
+      description: "Handles cutting operations (Coming Soon)",
+      color: "orange",
+      model: "Coming Soon"
+    },
+    { 
+      value: "TAILOR", 
+      label: "Tailor", 
+      icon: "🧵",
+      description: "Sews garments (Redirects to Tailor form)",
+      color: "blue",
+      model: "Tailor Model"
+    },
   ];
+
+  const getRoleColor = (role) => {
+    switch(role) {
+      case "STORE_KEEPER": return "green";
+      case "CUTTING_MASTER": return "orange";
+      case "TAILOR": return "blue";
+      default: return "slate";
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
@@ -124,6 +199,41 @@ export default function AddStaff() {
           <X size={20} className="text-slate-500" />
         </button>
       </div>
+
+      {/* Role Selection Notice for Tailor/Cutting Master */}
+      {selectedRole === "TAILOR" && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <ArrowRight size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-blue-800">You're adding a Tailor</p>
+              <p className="text-xs text-blue-600">You'll be redirected to the Tailor creation form</p>
+            </div>
+          </div>
+          <span className="text-xs bg-blue-200 text-blue-800 px-3 py-1 rounded-full font-bold">
+            Tailor Model
+          </span>
+        </div>
+      )}
+
+      {selectedRole === "CUTTING_MASTER" && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+              <ArrowRight size={20} className="text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-orange-800">Cutting Master</p>
+              <p className="text-xs text-orange-600">This feature is coming soon!</p>
+            </div>
+          </div>
+          <span className="text-xs bg-orange-200 text-orange-800 px-3 py-1 rounded-full font-bold">
+            Coming Soon
+          </span>
+        </div>
+      )}
 
       {/* Main Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -178,32 +288,34 @@ export default function AddStaff() {
             )}
           </div>
 
-          {/* Password */}
-          <div>
-            <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-wider">
-              Password <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-4 text-slate-400" size={20} />
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter password (min 6 characters)"
-                className={`w-full pl-12 pr-5 py-4 bg-slate-50 border ${
-                  errors.password ? 'border-red-300 bg-red-50' : 'border-slate-200'
-                } rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium`}
-              />
+          {/* Password - Hide for Tailor (since Tailor uses different model) */}
+          {selectedRole !== "TAILOR" && (
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-wider">
+                Password {selectedRole === "STORE_KEEPER" && <span className="text-red-500">*</span>}
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-4 text-slate-400" size={20} />
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder={selectedRole === "CUTTING_MASTER" ? "Optional for now" : "Enter password (min 6 characters)"}
+                  className={`w-full pl-12 pr-5 py-4 bg-slate-50 border ${
+                    errors.password ? 'border-red-300 bg-red-50' : 'border-slate-200'
+                  } rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium`}
+                />
+              </div>
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle size={12} /> {errors.password}
+                </p>
+              )}
             </div>
-            {errors.password && (
-              <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                <AlertCircle size={12} /> {errors.password}
-              </p>
-            )}
-          </div>
+          )}
 
-          {/* Role - Now with Tailor option */}
+          {/* Role Selection */}
           <div>
             <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-wider">
               Role <span className="text-red-500">*</span>
@@ -212,8 +324,8 @@ export default function AddStaff() {
               <Briefcase className="absolute left-4 top-4 text-slate-400" size={20} />
               <select
                 name="role"
-                value={formData.role}
-                onChange={handleChange}
+                value={selectedRole}
+                onChange={handleRoleChange}
                 className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium appearance-none"
               >
                 {roleOptions.map(option => (
@@ -222,6 +334,17 @@ export default function AddStaff() {
                   </option>
                 ))}
               </select>
+            </div>
+            
+            {/* Role Description */}
+            <div className={`mt-2 p-3 rounded-lg bg-${getRoleColor(selectedRole)}-50 border border-${getRoleColor(selectedRole)}-200`}>
+              <p className={`text-xs text-${getRoleColor(selectedRole)}-700 flex items-center gap-2`}>
+                <span className="text-lg">{roleOptions.find(r => r.value === selectedRole)?.icon}</span>
+                <span className="font-medium">{roleOptions.find(r => r.value === selectedRole)?.description}</span>
+                <span className="ml-auto text-xs px-2 py-0.5 bg-white rounded-full">
+                  {roleOptions.find(r => r.value === selectedRole)?.model}
+                </span>
+              </p>
             </div>
           </div>
 
@@ -259,7 +382,13 @@ export default function AddStaff() {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-black uppercase tracking-wider shadow-lg shadow-blue-500/30 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+              className={`flex-1 px-8 py-4 rounded-xl font-black uppercase tracking-wider transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 ${
+                selectedRole === "TAILOR"
+                  ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/30"
+                  : selectedRole === "CUTTING_MASTER"
+                  ? "bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white shadow-lg shadow-orange-500/30"
+                  : "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg shadow-green-500/30"
+              }`}
             >
               {loading ? (
                 <>
@@ -268,8 +397,22 @@ export default function AddStaff() {
                 </>
               ) : (
                 <>
-                  <Save size={18} />
-                  Create Staff
+                  {selectedRole === "TAILOR" ? (
+                    <>
+                      <ArrowRight size={18} />
+                      Continue to Tailor Form
+                    </>
+                  ) : selectedRole === "CUTTING_MASTER" ? (
+                    <>
+                      <ArrowRight size={18} />
+                      Coming Soon
+                    </>
+                  ) : (
+                    <>
+                      <Save size={18} />
+                      Create Store Keeper
+                    </>
+                  )}
                 </>
               )}
             </button>
@@ -284,24 +427,27 @@ export default function AddStaff() {
         </div>
       </form>
 
-      {/* Role Description */}
+      {/* Model Information */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <h3 className="text-sm font-black text-blue-800 mb-2 flex items-center gap-2">
           <Briefcase size={16} />
-          Role Descriptions
+          Role & Model Information
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-          <div className="bg-white p-2 rounded-lg">
+          <div className="bg-white p-3 rounded-lg border border-green-200">
             <span className="font-black text-green-600">🛍️ Store Keeper</span>
-            <p className="text-slate-600 mt-1">Manages inventory, products, and store operations</p>
+            <p className="text-slate-600 mt-1">Uses <span className="font-bold text-green-600">User Model</span></p>
+            <p className="text-slate-400 text-[10px] mt-1">Stored in 'users' collection</p>
           </div>
-          <div className="bg-white p-2 rounded-lg">
+          <div className="bg-white p-3 rounded-lg border border-orange-200">
             <span className="font-black text-orange-600">✂️ Cutting Master</span>
-            <p className="text-slate-600 mt-1">Handles cutting operations and work assignments</p>
+            <p className="text-slate-600 mt-1">Uses <span className="font-bold text-orange-600">CuttingMaster Model</span></p>
+            <p className="text-slate-400 text-[10px] mt-1">Coming soon</p>
           </div>
-          <div className="bg-white p-2 rounded-lg">
-            <span className="font-black text-purple-600">🧵 Tailor</span>
-            <p className="text-slate-600 mt-1">Sews garments and handles tailoring work</p>
+          <div className="bg-white p-3 rounded-lg border border-blue-200">
+            <span className="font-black text-blue-600">🧵 Tailor</span>
+            <p className="text-slate-600 mt-1">Uses <span className="font-bold text-blue-600">Tailor Model</span></p>
+            <p className="text-slate-400 text-[10px] mt-1">Redirects to Tailor form</p>
           </div>
         </div>
       </div>

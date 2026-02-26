@@ -5,9 +5,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { 
   User, Mail, Phone, Calendar, MapPin, 
   ChevronLeft, Edit, Power, AlertCircle,
-  Shield, Clock, CheckCircle, XCircle
+  Shield, Clock, CheckCircle, XCircle, Scissors, Star
 } from "lucide-react";
 import { fetchAllStaff } from "../../features/user/userSlice";
+import { fetchTailorById } from "../../features/tailor/tailorSlice"; // ✅ Import tailor slice
 import showToast from "../../utils/toast";
 import API from "../../app/axios";
 
@@ -19,24 +20,38 @@ export default function StaffDetails() {
   const [staff, setStaff] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isTailor, setIsTailor] = useState(false); // ✅ Check if it's a tailor
   
   const { user: currentUser } = useSelector((state) => state.auth || {});
+  const { currentTailor } = useSelector((state) => state.tailor || {}); // ✅ Get tailor from Redux
 
   useEffect(() => {
-    fetchStaffDetails();
+    fetchDetails();
   }, [id]);
 
-  const fetchStaffDetails = async () => {
+  const fetchDetails = async () => {
     setLoading(true);
     try {
-      // Try to get from Redux first
-      const response = await API.get(`/users/${id}`);
-      setStaff(response.data);
-      setError(null);
+      // First try to fetch as staff
+      try {
+        const response = await API.get(`/users/${id}`);
+        setStaff(response.data);
+        setIsTailor(false);
+        setError(null);
+      } catch (staffErr) {
+        // If staff fetch fails, try fetching as tailor
+        console.log("Not a staff, trying tailor...");
+        const result = await dispatch(fetchTailorById(id)).unwrap();
+        if (result) {
+          setStaff(result.tailor);
+          setIsTailor(true);
+          setError(null);
+        }
+      }
     } catch (err) {
-      console.error("Error fetching staff:", err);
-      setError("Failed to load staff details");
-      showToast.error("Failed to load staff details");
+      console.error("Error fetching details:", err);
+      setError("Failed to load details");
+      showToast.error("Failed to load details");
     } finally {
       setLoading(false);
     }
@@ -47,10 +62,20 @@ export default function StaffDetails() {
   };
 
   const handleEdit = () => {
-    navigate(`/admin/staff?edit=${id}`);
+    if (isTailor) {
+      navigate(`/admin/tailors/edit/${id}`); // ✅ Edit tailor
+    } else {
+      navigate(`/admin/staff?edit=${id}`); // ✅ Edit staff
+    }
   };
 
   const handleToggleStatus = async () => {
+    if (isTailor) {
+      // Tailor status toggle through leave system
+      showToast.info("Use Leave Status to manage tailor availability");
+      return;
+    }
+    
     try {
       const response = await API.put(`/users/${id}/toggle-status`);
       setStaff(prev => ({ ...prev, isActive: !prev.isActive }));
@@ -68,8 +93,25 @@ export default function StaffDetails() {
         return "bg-green-100 text-green-700 border-green-200";
       case "CUTTING_MASTER":
         return "bg-orange-100 text-orange-700 border-orange-200";
+      case "TAILOR":
+        return "bg-blue-100 text-blue-700 border-blue-200";
       default:
         return "bg-slate-100 text-slate-700 border-slate-200";
+    }
+  };
+
+  const getRoleIcon = (role) => {
+    switch(role) {
+      case "TAILOR":
+        return "🧵";
+      case "CUTTING_MASTER":
+        return "✂️";
+      case "STORE_KEEPER":
+        return "📦";
+      case "ADMIN":
+        return "👑";
+      default:
+        return "👤";
     }
   };
 
@@ -85,11 +127,26 @@ export default function StaffDetails() {
     });
   };
 
+  const getLeaveStatusBadge = (status) => {
+    switch(status) {
+      case "present":
+        return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">✅ Present</span>;
+      case "leave":
+        return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold">🚫 On Leave</span>;
+      case "half-day":
+        return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold">⏳ Half Day</span>;
+      case "holiday":
+        return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold">🎉 Holiday</span>;
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium">Loading staff details...</p>
+        <p className="text-slate-500 font-medium">Loading details...</p>
       </div>
     );
   }
@@ -98,8 +155,8 @@ export default function StaffDetails() {
     return (
       <div className="text-center py-16 bg-white rounded-3xl shadow-sm">
         <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
-        <h2 className="text-2xl font-black text-slate-800 mb-2">Staff Not Found</h2>
-        <p className="text-slate-500 mb-6">The staff member you're looking for doesn't exist.</p>
+        <h2 className="text-2xl font-black text-slate-800 mb-2">Not Found</h2>
+        <p className="text-slate-500 mb-6">The person you're looking for doesn't exist.</p>
         <button
           onClick={handleBack}
           className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-bold"
@@ -123,60 +180,90 @@ export default function StaffDetails() {
         </button>
         
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleToggleStatus}
-            className={`px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${
-              staff.isActive 
-                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
-                : 'bg-green-100 text-green-700 hover:bg-green-200'
-            }`}
-          >
-            <Power size={18} />
-            {staff.isActive ? 'Deactivate' : 'Activate'}
-          </button>
+          {!isTailor && (
+            <button
+              onClick={handleToggleStatus}
+              className={`px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${
+                staff.isActive 
+                  ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              <Power size={18} />
+              {staff.isActive ? 'Deactivate' : 'Activate'}
+            </button>
+          )}
           <button
             onClick={handleEdit}
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-500/30 transition-all"
           >
             <Edit size={18} />
-            Edit Staff
+            Edit {isTailor ? 'Tailor' : 'Staff'}
           </button>
         </div>
       </div>
 
-      {/* Staff Profile Card */}
+      {/* Profile Card */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         {/* Profile Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-12 text-white">
+        <div className={`bg-gradient-to-r px-8 py-12 text-white ${
+          isTailor 
+            ? 'from-blue-600 to-indigo-600' 
+            : staff.role === 'STORE_KEEPER' 
+              ? 'from-green-600 to-emerald-600'
+              : staff.role === 'CUTTING_MASTER'
+                ? 'from-orange-600 to-red-600'
+                : 'from-purple-600 to-pink-600'
+        }`}>
           <div className="flex items-center gap-6">
             {/* Avatar */}
             <div className="w-28 h-28 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center border-4 border-white/50 shadow-xl">
               <span className="text-5xl font-black">
-                {staff.name?.charAt(0) || 'U'}
+                {getRoleIcon(staff.role)}
               </span>
             </div>
 
             {/* Basic Info */}
             <div className="flex-1">
               <h1 className="text-3xl font-black mb-2">{staff.name}</h1>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
                 <span className={`px-4 py-1.5 rounded-full text-sm font-black border border-white/30 ${getRoleBadge(staff.role)}`}>
-                  {staff.role.replace('_', ' ')}
+                  {staff.role?.replace('_', ' ')}
                 </span>
-                {staff.isActive ? (
-                  <span className="flex items-center gap-1.5 bg-green-500/20 backdrop-blur px-3 py-1 rounded-full text-sm">
-                    <CheckCircle size={14} /> Active
-                  </span>
+                
+                {isTailor ? (
+                  // Tailor status
+                  getLeaveStatusBadge(staff.leaveStatus)
                 ) : (
-                  <span className="flex items-center gap-1.5 bg-red-500/20 backdrop-blur px-3 py-1 rounded-full text-sm">
-                    <XCircle size={14} /> Inactive
+                  // Staff status
+                  staff.isActive ? (
+                    <span className="flex items-center gap-1.5 bg-green-500/20 backdrop-blur px-3 py-1 rounded-full text-sm">
+                      <CheckCircle size={14} /> Active
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 bg-red-500/20 backdrop-blur px-3 py-1 rounded-full text-sm">
+                      <XCircle size={14} /> Inactive
+                    </span>
+                  )
+                )}
+
+                {/* Experience for tailors */}
+                {isTailor && staff.experience > 0 && (
+                  <span className="flex items-center gap-1.5 bg-yellow-500/20 backdrop-blur px-3 py-1 rounded-full text-sm">
+                    <Star size={14} /> {staff.experience} years exp
                   </span>
                 )}
               </div>
-              <p className="text-blue-100 flex items-center gap-2">
+              <p className="text-white/80 flex items-center gap-2">
                 <Mail size={16} />
-                {staff.email}
+                {staff.email || 'No email'}
               </p>
+              {staff.phone && (
+                <p className="text-white/80 flex items-center gap-2 mt-1">
+                  <Phone size={16} />
+                  {staff.phone}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -185,7 +272,7 @@ export default function StaffDetails() {
         <div className="p-8">
           <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
             <User size={20} className="text-blue-600" />
-            Personal Information
+            {isTailor ? 'Tailor Information' : 'Personal Information'}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -210,38 +297,85 @@ export default function StaffDetails() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 font-bold uppercase">Email Address</p>
-                  <p className="font-bold text-lg break-all">{staff.email}</p>
+                  <p className="font-bold text-lg break-all">{staff.email || "Not provided"}</p>
                 </div>
               </div>
             </div>
 
-            {/* Role */}
+            {/* Role/ID - For tailors show tailorId, for staff show role */}
             <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
               <div className="flex items-center gap-3 text-slate-600">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                   <Shield size={18} className="text-green-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Role</p>
-                  <p className="font-bold text-lg">{staff.role.replace('_', ' ')}</p>
+                  <p className="text-xs text-slate-400 font-bold uppercase">
+                    {isTailor ? 'Tailor ID' : 'Role'}
+                  </p>
+                  <p className="font-bold text-lg">
+                    {isTailor ? staff.tailorId : staff.role?.replace('_', ' ')}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Status */}
+            {/* Status/Availability */}
             <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
               <div className="flex items-center gap-3 text-slate-600">
                 <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                   <Power size={18} className="text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Account Status</p>
-                  <p className={`font-bold text-lg ${staff.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                    {staff.isActive ? 'Active' : 'Inactive'}
+                  <p className="text-xs text-slate-400 font-bold uppercase">
+                    {isTailor ? 'Availability' : 'Account Status'}
                   </p>
+                  {isTailor ? (
+                    <p className={`font-bold text-lg ${staff.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                      {staff.isAvailable ? 'Available' : 'Unavailable'}
+                    </p>
+                  ) : (
+                    <p className={`font-bold text-lg ${staff.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                      {staff.isActive ? 'Active' : 'Inactive'}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* For Tailors - Show Specialization */}
+            {isTailor && staff.specialization?.length > 0 && (
+              <div className="md:col-span-2 bg-slate-50 p-5 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-3 text-slate-600 mb-3">
+                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <Scissors size={18} className="text-indigo-600" />
+                  </div>
+                  <p className="text-xs text-slate-400 font-bold uppercase">Specialization</p>
+                </div>
+                <div className="flex flex-wrap gap-2 ml-13">
+                  {staff.specialization.map((spec, idx) => (
+                    <span key={idx} className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
+                      {spec}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* For Tailors - Show Leave Information */}
+            {isTailor && staff.leaveStatus !== "present" && (
+              <div className="md:col-span-2 bg-orange-50 p-5 rounded-xl border border-orange-200">
+                <div className="flex items-center gap-3 text-orange-600 mb-3">
+                  <AlertCircle size={18} />
+                  <p className="text-xs font-bold uppercase">Leave Information</p>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <p><span className="font-medium">Status:</span> {staff.leaveStatus}</p>
+                  {staff.leaveFrom && <p><span className="font-medium">From:</span> {formatDate(staff.leaveFrom)}</p>}
+                  {staff.leaveTo && <p><span className="font-medium">To:</span> {formatDate(staff.leaveTo)}</p>}
+                  {staff.leaveReason && <p><span className="font-medium">Reason:</span> {staff.leaveReason}</p>}
+                </div>
+              </div>
+            )}
 
             {/* Created Date */}
             <div className="bg-slate-50 p-5 rounded-xl border border-slate-200">
@@ -250,8 +384,10 @@ export default function StaffDetails() {
                   <Calendar size={18} className="text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Joined Date</p>
-                  <p className="font-bold text-lg">{formatDate(staff.createdAt)}</p>
+                  <p className="text-xs text-slate-400 font-bold uppercase">
+                    {isTailor ? 'Joined Date' : 'Joined Date'}
+                  </p>
+                  <p className="font-bold text-lg">{formatDate(staff.joiningDate || staff.createdAt)}</p>
                 </div>
               </div>
             </div>

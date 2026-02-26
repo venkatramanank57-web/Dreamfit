@@ -1,13 +1,10 @@
 import express from "express";
 import {
-  createWork,
   getAllWorks,
   getWorkById,
-  getWorksByUser,
   updateWorkStatus,
-  updateWork,
-  deleteWork,
-  getWorkStats,
+  assignTailor,
+  getDashboardStats
 } from "../controllers/work.controller.js";
 import { protect, authorize } from "../middleware/auth.middleware.js";
 
@@ -23,59 +20,38 @@ router.use((req, res, next) => {
 router.use(protect);
 
 /**
- * @route   POST /api/works
- * @desc    Create new work assignment
- * @access  Admin, Store Keeper
- */
-router.post("/", authorize("ADMIN", "STORE_KEEPER"), createWork);
-
-/**
  * @route   GET /api/works
- * @desc    Get all work assignments with filters
- * @access  Admin, Store Keeper, Cutting Master
+ * @desc    Get all works with filters
+ * @access  Admin, Store Keeper, Cutting Master, Tailor
  */
-router.get("/", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER"), getAllWorks);
+router.get("/", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER", "TAILOR"), getAllWorks);
 
 /**
  * @route   GET /api/works/stats
- * @desc    Get work statistics
- * @access  Admin, Store Keeper
+ * @desc    Get dashboard statistics
+ * @access  Admin, Store Keeper, Cutting Master, Tailor
  */
-router.get("/stats", authorize("ADMIN", "STORE_KEEPER"), getWorkStats);
-
-/**
- * @route   GET /api/works/user/:userId
- * @desc    Get works assigned to specific user
- * @access  Admin, Store Keeper, Cutting Master
- */
-router.get("/user/:userId", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER"), getWorksByUser);
+router.get("/stats", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER", "TAILOR"), getDashboardStats);
 
 /**
  * @route   GET /api/works/:id
  * @desc    Get work by ID
- * @access  Admin, Store Keeper, Cutting Master
+ * @access  Admin, Store Keeper, Cutting Master, Tailor
  */
-router.get("/:id", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER"), getWorkById);
+router.get("/:id", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER", "TAILOR"), getWorkById);
 
 /**
  * @route   PATCH /api/works/:id/status
  * @desc    Update work status
- * @access  Cutting Master, Admin
+ * @access  Cutting Master
  */
-router.patch("/:id/status", authorize("CUTTING_MASTER", "ADMIN"), updateWorkStatus);
+router.patch("/:id/status", authorize("CUTTING_MASTER"), updateWorkStatus);
 
 /**
- * @route   PUT /api/works/:id
- * @desc    Update work details (reassign, notes)
- * @access  Admin, Store Keeper
+ * @route   PATCH /api/works/:id/assign-tailor
+ * @desc    Assign tailor to work
+ * @access  Cutting Master
  */
-router.put("/:id", authorize("ADMIN", "STORE_KEEPER"), updateWork);
-
-/**
- * @route   DELETE /api/works/:id
- * @desc    Delete work assignment
- * @access  Admin
- */
-router.delete("/:id", authorize("ADMIN"), deleteWork);
+router.patch("/:id/assign-tailor", authorize("CUTTING_MASTER"), assignTailor);
 
 export default router;

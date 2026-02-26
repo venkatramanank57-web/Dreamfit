@@ -2,20 +2,24 @@ import API from "../../app/axios";
 
 // ===== GET ALL WORKS =====
 export const getAllWorksApi = async (params = {}) => {
-  const { page = 1, limit = 10, status = "", assignedTo = "" } = params;
+  const {
+    page = 1,
+    limit = 10,
+    status = "",
+    dateRange = "",
+    priority = "",
+    search = "",
+    assignedTo = "",
+    assignedBy = ""
+  } = params;
   
   let url = `/works?page=${page}&limit=${limit}`;
   if (status) url += `&status=${status}`;
+  if (dateRange) url += `&dateRange=${dateRange}`;
+  if (priority) url += `&priority=${priority}`;
+  if (search) url += `&search=${search}`;
   if (assignedTo) url += `&assignedTo=${assignedTo}`;
-  
-  const response = await API.get(url);
-  return response.data;
-};
-
-// ===== GET WORKS BY USER =====
-export const getWorksByUserApi = async (userId, status = "") => {
-  let url = `/works/user/${userId}`;
-  if (status) url += `?status=${status}`;
+  if (assignedBy) url += `&assignedBy=${assignedBy}`;
   
   const response = await API.get(url);
   return response.data;
@@ -28,13 +32,13 @@ export const getWorkByIdApi = async (id) => {
 };
 
 // ===== UPDATE WORK STATUS =====
-export const updateWorkStatusApi = async (id, status, notes = "") => {
-  const response = await API.patch(`/works/${id}/status`, { status, notes });
+export const updateWorkStatusApi = async (id, data) => {
+  const response = await API.patch(`/works/${id}/status`, data);
   return response.data;
 };
 
-// ===== GET WORK STATS =====
-export const getWorkStatsApi = async () => {
-  const response = await API.get("/works/stats");
+// ===== ASSIGN TAILOR =====
+export const assignTailorApi = async (id, data) => {
+  const response = await API.patch(`/works/${id}/assign-tailor`, data);
   return response.data;
 };
