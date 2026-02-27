@@ -21,6 +21,11 @@ const customerSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // ✅ NEW: Date of Birth field
+  dateOfBirth: {
+    type: Date,
+    default: null
+  },
   phone: {
     type: String,
     required: [true, "Phone number is required"],
@@ -75,29 +80,23 @@ const customerSchema = new mongoose.Schema({
   }
 }, { 
   timestamps: true,
-  // ✅ IMPORTANT: Allows ID generation before validation
   validateBeforeSave: false 
 });
 
-// ✅ FIXED: Modern Async Pre-save (NO 'next' parameter)
 customerSchema.pre("save", async function() {
   try {
     console.log("🔧 Customer pre-save hook triggered for:", this.firstName);
     
-    // 1. Generate customer ID if it doesn't exist
     if (!this.customerId) {
       const count = await mongoose.model("Customer").countDocuments();
       const year = new Date().getFullYear();
       const sequential = String(count + 1).padStart(5, "0");
-      
       this.customerId = `CUST-${year}-${sequential}`;
       console.log(`✅ Generated customerId: ${this.customerId}`);
     }
 
-    // 2. Combine name for backward compatibility
     this.name = `${this.salutation || ''} ${this.firstName || ''} ${this.lastName || ''}`.trim();
     
-    // 3. Combine address for backward compatibility
     const addressParts = [
       this.addressLine1,
       this.addressLine2,
@@ -107,19 +106,15 @@ customerSchema.pre("save", async function() {
     ].filter(Boolean);
     this.address = addressParts.join(', ');
 
-    // 4. Manually trigger validation since auto-validation is disabled
     await this.validate();
-
     console.log("✅ Customer pre-save completed successfully");
     
   } catch (error) {
     console.error("❌ Error in customer pre-save hook:", error);
-    // In async hooks, throwing an error is the same as calling next(error)
-    throw error; 
+    throw error;
   }
 });
 
-// Virtual for full name
 customerSchema.virtual('fullName').get(function() {
   return `${this.salutation || ''} ${this.firstName || ''} ${this.lastName || ''}`.trim();
 });

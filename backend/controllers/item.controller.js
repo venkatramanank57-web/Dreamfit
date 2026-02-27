@@ -3,10 +3,28 @@ import Item from "../models/Item.js";
 // CREATE
 export const createItem = async (req, res) => {
   try {
+    const { name, categoryId, priceRange } = req.body;
+
+    // ✅ Validate price range
+    if (priceRange) {
+      if (priceRange.min < 0 || priceRange.max < 0) {
+        return res.status(400).json({ 
+          message: "Price cannot be negative" 
+        });
+      }
+      if (priceRange.min > priceRange.max) {
+        return res.status(400).json({ 
+          message: "Minimum price cannot be greater than maximum price" 
+        });
+      }
+    }
+
     const item = await Item.create({
-      name: req.body.name,
-      category: req.body.categoryId
+      name: name,
+      category: categoryId,
+      priceRange: priceRange || { min: 0, max: 0 } // ✅ Add price range
     });
+    
     await item.populate("category");
     res.status(201).json(item);
   } catch (error) {
@@ -43,10 +61,30 @@ export const getItemById = async (req, res) => {
 // UPDATE
 export const updateItem = async (req, res) => {
   try {
+    const { name, priceRange } = req.body;
+    const updates = {};
+
+    if (name) updates.name = name;
+    
+    // ✅ Handle price range update
+    if (priceRange) {
+      if (priceRange.min < 0 || priceRange.max < 0) {
+        return res.status(400).json({ 
+          message: "Price cannot be negative" 
+        });
+      }
+      if (priceRange.min > priceRange.max) {
+        return res.status(400).json({ 
+          message: "Minimum price cannot be greater than maximum price" 
+        });
+      }
+      updates.priceRange = priceRange;
+    }
+
     const item = await Item.findByIdAndUpdate(
       req.params.id,
-      { name: req.body.name },
-      { new: true }
+      updates,
+      { new: true, runValidators: true }
     ).populate("category");
     
     if (!item) return res.status(404).json({ message: "Item not found" });

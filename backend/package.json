@@ -11,7 +11,10 @@
     "seed:sizeFields": "node seed/sizeField.seed.js",
     "seed:templates": "node seed/templates.seed.js",
     "seed:orders": "node seed/order.seed.js",
-      "seed:tailors": "node seed/tailor.seed.js",
+    "seed:customer": "node seed/customer.seed.js",
+    "seed:category": "node seed/category.seed.js",
+    "seed:item": "node seed/item.seed.js",
+    "seed:tailors": "node seed/tailor.seed.js",
     "seed:all": "node seed/sizeField.seed.js && node seed/templates.seed.js && node seed/order.seed.js"
   },
   "keywords": [],

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { 
   User, Phone, Mail, MapPin, Home, ChevronRight, X, Save, 
-  Building, Globe, BookOpen, AlertCircle, Hash
+  Building, Globe, BookOpen, AlertCircle, Hash, Calendar
 } from "lucide-react";
 import { createNewCustomer } from "../../../features/customer/customerSlice";
 import showToast from "../../../utils/toast";
@@ -14,10 +14,15 @@ export default function AddCustomer() {
   const { loading, customers } = useSelector((state) => state.customer);
   const { user } = useSelector((state) => state.auth);
 
+  console.log("🔵 ========== ADD CUSTOMER COMPONENT ==========");
+  console.log("👤 User role:", user?.role);
+  console.log("📊 Customers count:", customers?.length);
+
   const [formData, setFormData] = useState({
     salutation: "Mr.",
     firstName: "",
     lastName: "",
+    dateOfBirth: "",
     contactNumber: "",
     whatsappNumber: "",
     email: "",
@@ -36,8 +41,12 @@ export default function AddCustomer() {
                    user?.role === "STORE_KEEPER" ? "/storekeeper" : 
                    "/cuttingmaster";
 
+  console.log("📍 Base path:", rolePath);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    console.log(`✏️ Field changed: ${name} =`, value);
     
     // Special handling for phone numbers
     if (name === "contactNumber" || name === "whatsappNumber" || name === "pincode") {
@@ -61,25 +70,31 @@ export default function AddCustomer() {
   };
 
   const validateForm = () => {
+    console.log("🔍 Validating form...");
     const newErrors = {};
 
     // Validate first name
     if (!formData.firstName.trim()) {
       newErrors.firstName = "First name is required";
+      console.log("❌ First name missing");
     }
 
     // Validate contact number
     if (!formData.contactNumber) {
       newErrors.contactNumber = "Contact number is required";
+      console.log("❌ Contact number missing");
     } else if (formData.contactNumber.length !== 10) {
       newErrors.contactNumber = "Contact number must be 10 digits";
+      console.log("❌ Contact number invalid length:", formData.contactNumber.length);
     }
 
     // Validate WhatsApp number
     if (!formData.whatsappNumber) {
       newErrors.whatsappNumber = "WhatsApp number is required";
+      console.log("❌ WhatsApp number missing");
     } else if (formData.whatsappNumber.length !== 10) {
       newErrors.whatsappNumber = "WhatsApp number must be 10 digits";
+      console.log("❌ WhatsApp number invalid length:", formData.whatsappNumber.length);
     }
 
     // Validate email if provided
@@ -87,29 +102,63 @@ export default function AddCustomer() {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
         newErrors.email = "Enter a valid email address";
+        console.log("❌ Invalid email:", formData.email);
       }
     }
 
     // Validate address line 1
     if (!formData.addressLine1.trim()) {
       newErrors.addressLine1 = "Address is required";
+      console.log("❌ Address line 1 missing");
     }
 
     // Validate pincode if provided
     if (formData.pincode && formData.pincode.length !== 6) {
       newErrors.pincode = "Pincode must be 6 digits";
+      console.log("❌ Invalid pincode:", formData.pincode);
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const isValid = Object.keys(newErrors).length === 0;
+    console.log("✅ Form valid:", isValid);
+    if (!isValid) console.log("❌ Errors:", newErrors);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    console.log("🚀 ========== FORM SUBMIT START ==========");
+    console.log("📋 Raw formData:", {
+      ...formData,
+      dateOfBirth: formData.dateOfBirth ? `"${formData.dateOfBirth}"` : "empty"
+    });
+    console.log("🎂 Raw dateOfBirth value:", formData.dateOfBirth ? `"${formData.dateOfBirth}"` : "empty");
+    console.log("🎂 dateOfBirth type:", typeof formData.dateOfBirth);
+    console.log("🎂 dateOfBirth length:", formData.dateOfBirth?.length || 0);
+    
     if (!validateForm()) {
+      console.log("❌ Form validation failed");
       showToast.error("Please fix the errors in the form");
       return;
+    }
+    
+    // ✅ Process date of birth
+    let dobValue = undefined;
+    if (formData.dateOfBirth) {
+      console.log("📅 Processing date:", formData.dateOfBirth);
+      
+      // Create date object (input is YYYY-MM-DD)
+      const dateObj = new Date(formData.dateOfBirth);
+      console.log("📅 Date object created:", dateObj);
+      console.log("📅 Date ISO string:", dateObj.toISOString());
+      
+      // Set to noon UTC to avoid timezone issues
+      const isoString = dateObj.toISOString();
+      dobValue = isoString;
+      console.log("📅 Final DOB value for API:", dobValue);
+    } else {
+      console.log("📅 No date selected - sending undefined");
     }
     
     // Prepare customer data for API
@@ -117,34 +166,47 @@ export default function AddCustomer() {
       salutation: formData.salutation,
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
-      phone: formData.contactNumber,
-      whatsapp: formData.whatsappNumber,
+      dateOfBirth: dobValue,
+      contactNumber: formData.contactNumber,
+      whatsappNumber: formData.whatsappNumber,
       email: formData.email.trim() || undefined,
-      address: {
-        line1: formData.addressLine1.trim(),
-        line2: formData.addressLine2.trim() || undefined,
-        city: formData.city.trim() || undefined,
-        state: formData.state.trim() || undefined,
-        pincode: formData.pincode || undefined
-      },
+      addressLine1: formData.addressLine1.trim(),
+      addressLine2: formData.addressLine2.trim() || undefined,
+      city: formData.city.trim() || undefined,
+      state: formData.state.trim() || undefined,
+      pincode: formData.pincode || undefined,
       notes: formData.notes.trim() || undefined
     };
 
+    console.log("📦 Final customerData being sent to API:", {
+      ...customerData,
+      dateOfBirth: customerData.dateOfBirth ? `"${customerData.dateOfBirth}"` : "undefined"
+    });
+    console.log("📦 Date of Birth in payload:", customerData.dateOfBirth ? `"${customerData.dateOfBirth}"` : "undefined");
+
     try {
-      await dispatch(createNewCustomer(customerData)).unwrap();
+      console.log("⏳ Dispatching createNewCustomer action...");
+      const result = await dispatch(createNewCustomer(customerData)).unwrap();
+      console.log("✅ Customer created successfully!");
+      console.log("✅ Response from server:", result);
+      console.log("✅ Date of Birth in response:", result.customer?.dateOfBirth);
+      
       showToast.success("Customer created successfully! 🎉");
-      // ✅ Navigate with rolePath
+      console.log("🔄 Navigating to:", `${rolePath}/customers`);
       navigate(`${rolePath}/customers`);
     } catch (error) {
-      console.error("Error creating customer:", error);
+      console.error("❌ Error creating customer:", error);
       
       // Check for duplicate phone error message
       const errorMsg = error.message || error.toString();
+      console.log("❌ Error message:", errorMsg);
+      
       if (errorMsg.includes("already exists") || 
           errorMsg.includes("duplicate") ||
           errorMsg.includes("phone") ||
           errorMsg.includes("Phone number")) {
         
+        console.log("❌ Duplicate phone number detected");
         showToast.error("❌ This mobile number is already registered! Please use a different number.");
         
         // Highlight the phone field with error
@@ -153,13 +215,17 @@ export default function AddCustomer() {
           contactNumber: "This phone number is already taken"
         }));
       } else {
+        console.log("❌ Unknown error:", errorMsg);
         showToast.error(error.message || "Failed to create customer");
       }
+    } finally {
+      console.log("🏁 ========== FORM SUBMIT END ==========");
     }
   };
 
   // ✅ Handle Cancel - with rolePath
   const handleCancel = () => {
+    console.log("🔙 Cancel clicked - navigating to:", `${rolePath}/customers`);
     navigate(`${rolePath}/customers`);
   };
 
@@ -176,8 +242,39 @@ export default function AddCustomer() {
     return `CUST-${year}-${sequential}`;
   };
 
+  console.log("🔄 Component rendering with formData:", {
+    ...formData,
+    dateOfBirth: formData.dateOfBirth ? `"${formData.dateOfBirth}"` : "empty"
+  });
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
+      {/* Debug Panel - Only in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-gray-900 text-green-400 p-4 rounded-2xl font-mono text-sm mb-4 overflow-auto max-h-40">
+          <div className="flex justify-between items-center mb-2">
+            <span className="font-bold">🔍 DEBUG INFO</span>
+            <button 
+              onClick={() => {
+                console.clear();
+                console.log("🧹 Console cleared");
+              }} 
+              className="text-xs bg-gray-700 px-2 py-1 rounded hover:bg-gray-600"
+            >
+              Clear Console
+            </button>
+          </div>
+          <div className="space-y-1">
+            <div>Date of Birth: {formData.dateOfBirth || '❌ Not set'}</div>
+            <div>DOB Length: {formData.dateOfBirth?.length || 0}</div>
+            <div>First Name: {formData.firstName || '❌'}</div>
+            <div>Phone: {formData.contactNumber || '❌'}</div>
+            <div>Role: {user?.role}</div>
+            <div>Base Path: {rolePath}</div>
+          </div>
+        </div>
+      )}
+
       {/* Header with Breadcrumb */}
       <div className="flex items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
@@ -298,6 +395,24 @@ export default function AddCustomer() {
               </div>
             </div>
 
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-wider">
+                Date of Birth
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-4 top-4 text-slate-400" size={20} />
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  value={formData.dateOfBirth}
+                  onChange={handleChange}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full pl-12 pr-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
+                />
+              </div>
+            </div>
+
             {/* Contact Number (Primary) */}
             <div>
               <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-wider">
@@ -324,7 +439,7 @@ export default function AddCustomer() {
               )}
             </div>
 
-            {/* WhatsApp Number - REQUIRED */}
+            {/* WhatsApp Number */}
             <div>
               <label className="block text-xs font-black uppercase text-slate-500 mb-2 tracking-wider">
                 WhatsApp Number <span className="text-red-500">*</span>

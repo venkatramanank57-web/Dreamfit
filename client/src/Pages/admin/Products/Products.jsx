@@ -16,6 +16,7 @@ import {
   Eye,
   Power,
   EyeOff,
+  IndianRupee, // ✅ Add IndianRupee icon
 } from "lucide-react";
 import {
   fetchAllFabrics,
@@ -74,7 +75,16 @@ export default function Products() {
     imagePreview: null,
   });
   const [categoryForm, setCategoryForm] = useState({ name: "" });
-  const [itemForm, setItemForm] = useState({ name: "", categoryId: "" });
+  
+  // ✅ Updated itemForm with priceRange
+  const [itemForm, setItemForm] = useState({ 
+    name: "", 
+    categoryId: "",
+    priceRange: {  // ✅ Added priceRange object
+      min: 0,
+      max: 0
+    }
+  });
 
   // Load data
   useEffect(() => {
@@ -166,17 +176,36 @@ export default function Products() {
       return;
     }
 
+    // ✅ Validate price range
+    if (itemForm.priceRange.min < 0 || itemForm.priceRange.max < 0) {
+      showToast.error("Price cannot be negative");
+      return;
+    }
+    if (itemForm.priceRange.min > itemForm.priceRange.max) {
+      showToast.error("Minimum price cannot be greater than maximum price");
+      return;
+    }
+
     try {
       if (editingItem) {
+        // ✅ Include priceRange in update
         await dispatch(
           updateItem({
             id: editingItem._id,
-            itemData: { name: itemForm.name },
+            itemData: { 
+              name: itemForm.name,
+              priceRange: itemForm.priceRange  // ✅ Added priceRange
+            },
           }),
         ).unwrap();
         showToast.success("Item updated successfully! ✅");
       } else {
-        await dispatch(createItem(itemForm)).unwrap();
+        // ✅ Include priceRange in create
+        await dispatch(createItem({
+          name: itemForm.name,
+          categoryId: itemForm.categoryId,
+          priceRange: itemForm.priceRange  // ✅ Added priceRange
+        })).unwrap();
         showToast.success("Item created successfully! 🎉");
       }
       setShowModal(false);
@@ -195,7 +224,14 @@ export default function Products() {
       imagePreview: null,
     });
     setCategoryForm({ name: "" });
-    setItemForm({ name: "", categoryId: "" });
+    setItemForm({ 
+      name: "", 
+      categoryId: "",
+      priceRange: {  // ✅ Reset priceRange
+        min: 0,
+        max: 0
+      }
+    });
     setEditingItem(null);
   };
 
@@ -216,7 +252,15 @@ export default function Products() {
     } else if (activeTab === "category") {
       setCategoryForm({ name: item.name });
     } else {
-      setItemForm({ name: item.name, categoryId: item.category?._id || "" });
+      // ✅ Include priceRange when editing item
+      setItemForm({ 
+        name: item.name, 
+        categoryId: item.category?._id || "",
+        priceRange: {
+          min: item.priceRange?.min || 0,
+          max: item.priceRange?.max || 0
+        }
+      });
     }
     setShowModal(true);
   };
@@ -287,6 +331,16 @@ export default function Products() {
         }));
       reader.readAsDataURL(file);
     }
+  };
+
+  // ✅ Format price helper function
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price);
   };
 
   // Filter items based on showInactive toggle (for Admin only)
@@ -582,7 +636,7 @@ export default function Products() {
             </div>
           )}
 
-          {/* Items List */}
+          {/* Items List - ✅ Updated to show price range */}
           {activeTab === "item" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredItems?.map((item) => (
@@ -600,6 +654,13 @@ export default function Products() {
                       <p className="text-sm text-slate-600 mt-1">
                         Category: {item.category?.name}
                       </p>
+                      {/* ✅ Display price range */}
+                      {item.priceRange && (
+                        <div className="flex items-center gap-1 text-sm text-purple-600 font-bold mt-2">
+                          <IndianRupee size={14} />
+                          <span>{formatPrice(item.priceRange.min)} - {formatPrice(item.priceRange.max)}</span>
+                        </div>
+                      )}
                       {!item.isActive && (
                         <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full mt-1 inline-block">
                           Inactive
@@ -640,7 +701,7 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Add/Edit Modal - ✅ Updated item section with price range inputs */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
@@ -785,6 +846,56 @@ export default function Products() {
                       </option>
                     ))}
                   </select>
+                  
+                  {/* ✅ Price Range Inputs */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">
+                        Min Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Min Price"
+                        value={itemForm.priceRange.min}
+                        onChange={(e) =>
+                          setItemForm({
+                            ...itemForm,
+                            priceRange: {
+                              ...itemForm.priceRange,
+                              min: parseFloat(e.target.value) || 0
+                            }
+                          })
+                        }
+                        min="0"
+                        step="10"
+                        className="w-full px-4 py-3 bg-slate-50 border rounded-xl"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">
+                        Max Price (₹)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="Max Price"
+                        value={itemForm.priceRange.max}
+                        onChange={(e) =>
+                          setItemForm({
+                            ...itemForm,
+                            priceRange: {
+                              ...itemForm.priceRange,
+                              max: parseFloat(e.target.value) || 0
+                            }
+                          })
+                        }
+                        min="0"
+                        step="10"
+                        className="w-full px-4 py-3 bg-slate-50 border rounded-xl"
+                        required
+                      />
+                    </div>
+                  </div>
                 </>
               )}
 

@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { 
   User, Phone, Mail, MapPin, Calendar, ShoppingBag, 
   ChevronLeft, PlusCircle, AlertCircle, Edit, Trash2, 
-  Save, X, Hash, MessageCircle, FileText, Star
+  Save, X, Hash, MessageCircle, FileText, Star, Cake // ✅ Add Cake icon for DOB
 } from "lucide-react";
 import { fetchCustomerById, updateCustomer, deleteCustomer } from "../../../features/customer/customerSlice";
 import showToast from "../../../utils/toast";
@@ -23,6 +23,7 @@ export default function CustomerDetails() {
     salutation: "Mr.",
     firstName: "",
     lastName: "",
+    dateOfBirth: "", // ✅ NEW: Date of Birth
     phone: "",
     whatsappNumber: "",
     email: "",
@@ -56,6 +57,7 @@ export default function CustomerDetails() {
         salutation: currentCustomer.salutation || "Mr.",
         firstName: currentCustomer.firstName || "",
         lastName: currentCustomer.lastName || "",
+        dateOfBirth: currentCustomer.dateOfBirth ? currentCustomer.dateOfBirth.split('T')[0] : "", // ✅ Format date for input
         phone: currentCustomer.phone || "",
         whatsappNumber: currentCustomer.whatsappNumber || "",
         email: currentCustomer.email || "",
@@ -92,6 +94,7 @@ export default function CustomerDetails() {
         salutation: currentCustomer.salutation || "Mr.",
         firstName: currentCustomer.firstName || "",
         lastName: currentCustomer.lastName || "",
+        dateOfBirth: currentCustomer.dateOfBirth ? currentCustomer.dateOfBirth.split('T')[0] : "",
         phone: currentCustomer.phone || "",
         whatsappNumber: currentCustomer.whatsappNumber || "",
         email: currentCustomer.email || "",
@@ -125,6 +128,7 @@ export default function CustomerDetails() {
         salutation: formData.salutation,
         firstName: formData.firstName,
         lastName: formData.lastName,
+        dateOfBirth: formData.dateOfBirth || undefined, // ✅ Include dateOfBirth
         phone: formData.phone,
         whatsappNumber: formData.whatsappNumber,
         email: formData.email,
@@ -164,6 +168,30 @@ export default function CustomerDetails() {
       month: 'long', 
       year: 'numeric'
     });
+  };
+
+  // Format date for display
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  // Calculate age from date of birth
+  const calculateAge = (dateString) => {
+    if (!dateString) return null;
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   // Check if customer is VIP
@@ -208,6 +236,8 @@ export default function CustomerDetails() {
     }
     return name || 'Customer';
   };
+
+  const age = calculateAge(currentCustomer.dateOfBirth);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -292,6 +322,17 @@ export default function CustomerDetails() {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black uppercase text-slate-500 mb-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                    max={new Date().toISOString().split('T')[0]}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -479,6 +520,22 @@ export default function CustomerDetails() {
                   <p className="text-xl font-bold text-slate-800 break-all">{currentCustomer.email}</p>
                 </div>
               </div>
+
+              {/* ✅ NEW: Date of Birth */}
+              {currentCustomer.dateOfBirth && (
+                <div className="flex items-center gap-4 p-4 bg-pink-50 rounded-xl">
+                  <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center">
+                    <Cake size={24} className="text-pink-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-pink-600 font-bold uppercase">Date of Birth</p>
+                    <p className="text-xl font-bold text-slate-800">
+                      {formatDisplayDate(currentCustomer.dateOfBirth)}
+                      {age && <span className="text-sm font-normal text-slate-500 ml-2">({age} years)</span>}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Total Orders */}
               <div className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl">

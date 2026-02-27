@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { 
   ArrowLeft, Edit, Trash2, Package, Calendar, 
-  Layers, Power, Save, X
+  Layers, Power, Save, X, IndianRupee // ✅ Add IndianRupee icon
 } from "lucide-react";
 import { fetchItems, deleteItem, updateItem } from "../../../features/item/itemSlice";
 import { fetchAllCategories } from "../../../features/category/categorySlice";
@@ -21,6 +21,11 @@ export default function ItemDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [itemName, setItemName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  // ✅ NEW: Price range state
+  const [priceRange, setPriceRange] = useState({
+    min: 0,
+    max: 0
+  });
 
   // ✅ Get base path based on user role
   const basePath = user?.role === "ADMIN" ? "/admin" : 
@@ -47,6 +52,11 @@ export default function ItemDetail() {
     if (item) {
       setItemName(item.name);
       setSelectedCategory(item.category?._id || "");
+      // ✅ Set price range from item
+      setPriceRange({
+        min: item.priceRange?.min || 0,
+        max: item.priceRange?.max || 0
+      });
     }
   }, [item]);
 
@@ -76,16 +86,41 @@ export default function ItemDetail() {
       return;
     }
 
+    // ✅ Validate price range
+    if (priceRange.min < 0 || priceRange.max < 0) {
+      showToast.error("Price cannot be negative");
+      return;
+    }
+    if (priceRange.min > priceRange.max) {
+      showToast.error("Minimum price cannot be greater than maximum price");
+      return;
+    }
+
     try {
+      const updateData = {
+        name: itemName,
+        priceRange: priceRange // ✅ Include price range in update
+      };
+      
       await dispatch(updateItem({ 
         id, 
-        itemData: { name: itemName }
+        itemData: updateData
       })).unwrap();
       showToast.success("Item updated");
       setIsEditing(false);
     } catch (error) {
-      showToast.error("Update failed");
+      showToast.error(error.message || "Update failed");
     }
+  };
+
+  // Format price for display
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(price);
   };
 
   if (!item) {
@@ -180,6 +215,52 @@ export default function ItemDetail() {
                   </div>
                 ) : (
                   <p className="text-xl font-bold">{item.name}</p>
+                )}
+              </div>
+
+              {/* ✅ NEW: Price Range */}
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 text-slate-600 mb-2">
+                  <IndianRupee size={18} className="text-purple-600" />
+                  <span className="text-sm font-medium uppercase tracking-wider">Price Range</span>
+                </div>
+                {isEditing ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Min Price (₹)</label>
+                      <input
+                        type="number"
+                        value={priceRange.min}
+                        onChange={(e) => setPriceRange({
+                          ...priceRange,
+                          min: parseFloat(e.target.value) || 0
+                        })}
+                        min="0"
+                        step="10"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Max Price (₹)</label>
+                      <input
+                        type="number"
+                        value={priceRange.max}
+                        onChange={(e) => setPriceRange({
+                          ...priceRange,
+                          max: parseFloat(e.target.value) || 0
+                        })}
+                        min="0"
+                        step="10"
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-purple-600">
+                      {formatPrice(item.priceRange?.min || 0)} - {formatPrice(item.priceRange?.max || 0)}
+                    </span>
+                  </div>
                 )}
               </div>
 
