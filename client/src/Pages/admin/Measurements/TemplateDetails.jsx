@@ -5,9 +5,9 @@ import {
   ArrowLeft, Edit, Trash2, Power, Save, X, 
   CheckSquare, Square, Ruler
 } from "lucide-react";
-import { fetchTemplateById, updateTemplate, deleteTemplate, toggleTemplateStatus } from "../../features/sizeTemplate/sizeTemplateSlice";
-import { fetchAllSizeFields } from "../../features/sizeField/sizeFieldSlice";
-import showToast from "../../utils/toast";
+import { fetchTemplateById, updateTemplate, deleteTemplate, toggleTemplateStatus } from "../../../features/sizeTemplate/sizeTemplateSlice";
+import { fetchAllSizeFields } from "../../../features/sizeField/sizeFieldSlice";
+import showToast from "../../../utils/toast";
 
 export default function TemplateDetails() {
   const { id } = useParams();
@@ -16,6 +16,7 @@ export default function TemplateDetails() {
   
   const { currentTemplate, loading } = useSelector((state) => state.sizeTemplate);
   const { fields } = useSelector((state) => state.sizeField);
+  const { user } = useSelector((state) => state.auth);
   
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,6 +25,17 @@ export default function TemplateDetails() {
     sizeFields: []
   });
   const [selectedFields, setSelectedFields] = useState({});
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
+
+  const isAdmin = user?.role === "ADMIN";
+  const isStoreKeeper = user?.role === "STORE_KEEPER";
+  const canEdit = isAdmin || isStoreKeeper;
+  const canDelete = isAdmin; // Only Admin can delete
+  const canToggle = isAdmin || isStoreKeeper;
 
   useEffect(() => {
     if (id) {
@@ -50,15 +62,19 @@ export default function TemplateDetails() {
   }, [currentTemplate]);
 
   const handleBack = () => {
-    navigate("/admin/measurements");
+    navigate(`${basePath}/measurements`);
   };
 
   const handleDelete = async () => {
+    if (!canDelete) {
+      showToast.error("Only Admin can delete templates");
+      return;
+    }
     if (window.confirm("Are you sure you want to delete this template?")) {
       try {
         await dispatch(deleteTemplate(id)).unwrap();
         showToast.success("Template deleted successfully");
-        navigate("/admin/measurements");
+        navigate(`${basePath}/measurements`);
       } catch (error) {
         showToast.error("Failed to delete template");
       }
@@ -66,6 +82,10 @@ export default function TemplateDetails() {
   };
 
   const handleToggleStatus = async () => {
+    if (!canToggle) {
+      showToast.error("You don't have permission to change status");
+      return;
+    }
     try {
       await dispatch(toggleTemplateStatus(id)).unwrap();
       showToast.success(`Template ${currentTemplate.isActive ? 'deactivated' : 'activated'}`);
@@ -75,6 +95,10 @@ export default function TemplateDetails() {
   };
 
   const handleEdit = () => {
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit templates");
+      return;
+    }
     setIsEditing(true);
   };
 
@@ -123,6 +147,10 @@ export default function TemplateDetails() {
   };
 
   const handleUpdate = async () => {
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit templates");
+      return;
+    }
     if (!formData.name.trim()) {
       showToast.error("Template name is required");
       return;
@@ -193,29 +221,35 @@ export default function TemplateDetails() {
         
         {!isEditing && (
           <div className="flex gap-3">
-            <button
-              onClick={handleToggleStatus}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                currentTemplate.isActive 
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
-                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-              }`}
-            >
-              <Power size={18} />
-              {currentTemplate.isActive ? 'Active' : 'Inactive'}
-            </button>
-            <button
-              onClick={handleEdit}
-              className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 flex items-center gap-2"
-            >
-              <Edit size={18} /> Edit
-            </button>
-            <button
-              onClick={handleDelete}
-              className="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 flex items-center gap-2"
-            >
-              <Trash2 size={18} /> Delete
-            </button>
+            {canToggle && (
+              <button
+                onClick={handleToggleStatus}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                  currentTemplate.isActive 
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                }`}
+              >
+                <Power size={18} />
+                {currentTemplate.isActive ? 'Active' : 'Inactive'}
+              </button>
+            )}
+            {canEdit && (
+              <button
+                onClick={handleEdit}
+                className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 flex items-center gap-2"
+              >
+                <Edit size={18} /> Edit
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={handleDelete}
+                className="bg-red-100 text-red-700 px-4 py-2 rounded-lg hover:bg-red-200 flex items-center gap-2"
+              >
+                <Trash2 size={18} /> Delete
+              </button>
+            )}
           </div>
         )}
       </div>

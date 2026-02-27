@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { ArrowLeft, Save, X, CheckSquare, Square } from "lucide-react";
-import { fetchTemplateById, updateTemplate } from "../../features/sizeTemplate/sizeTemplateSlice";
-import { fetchAllSizeFields } from "../../features/sizeField/sizeFieldSlice";
-import showToast from "../../utils/toast";
+import { fetchTemplateById, updateTemplate } from "../../../features/sizeTemplate/sizeTemplateSlice";
+import { fetchAllSizeFields } from "../../../features/sizeField/sizeFieldSlice";
+import showToast from "../../../utils/toast";
 
 export default function EditTemplate() {
   const { id } = useParams();
@@ -13,18 +13,38 @@ export default function EditTemplate() {
   
   const { currentTemplate, loading } = useSelector((state) => state.sizeTemplate);
   const { fields } = useSelector((state) => state.sizeField);
+  const { user } = useSelector((state) => state.auth);
   
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
+
   // ✅ Debug logs
   console.log("📊 EditTemplate - fields from Redux:", fields);
   console.log("📊 EditTemplate - fields length:", fields?.length);
   console.log("📊 EditTemplate - currentTemplate:", currentTemplate);
-  
+  console.log("👤 User role:", user?.role);
+  console.log("📍 Base Path:", basePath);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     sizeFields: []
   });
   const [selectedFields, setSelectedFields] = useState({});
+
+  const isAdmin = user?.role === "ADMIN";
+  const isStoreKeeper = user?.role === "STORE_KEEPER";
+  const canEdit = isAdmin || isStoreKeeper;
+
+  // Check if user has permission to edit
+  useEffect(() => {
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit templates");
+      navigate(`${basePath}/measurements/${id}`);
+    }
+  }, [canEdit, navigate, basePath, id]);
 
   useEffect(() => {
     console.log("📡 Fetching template ID:", id);
@@ -89,6 +109,11 @@ export default function EditTemplate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit templates");
+      return;
+    }
+    
     if (!formData.name.trim()) {
       showToast.error("Template name is required");
       return;
@@ -102,7 +127,7 @@ export default function EditTemplate() {
     try {
       await dispatch(updateTemplate({ id, templateData: formData })).unwrap();
       showToast.success("Template updated successfully");
-      navigate(`/admin/measurements/${id}`);
+      navigate(`${basePath}/measurements/${id}`);
     } catch (error) {
       showToast.error(error || "Failed to update template");
     }
@@ -130,7 +155,7 @@ export default function EditTemplate() {
     );
   }
 
-  // ✅ Show message if no fields
+  // Show message if no fields
   if (!fields || fields.length === 0) {
     return (
       <div className="max-w-4xl mx-auto p-6">
@@ -138,7 +163,7 @@ export default function EditTemplate() {
           <h3 className="text-xl font-bold text-slate-700 mb-2">No Size Fields Found</h3>
           <p className="text-slate-500 mb-6">Please run the size fields seed first.</p>
           <button
-            onClick={() => navigate(`/admin/measurements/${id}`)}
+            onClick={() => navigate(`${basePath}/measurements/${id}`)}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg"
           >
             Go Back
@@ -148,12 +173,17 @@ export default function EditTemplate() {
     );
   }
 
+  // Don't render if user doesn't have permission (redirect will happen)
+  if (!canEdit) {
+    return null;
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate(`/admin/measurements/${id}`)}
+          onClick={() => navigate(`${basePath}/measurements/${id}`)}
           className="p-2 hover:bg-slate-100 rounded-lg transition-all"
         >
           <ArrowLeft size={20} className="text-slate-600" />
@@ -239,7 +269,7 @@ export default function EditTemplate() {
           </button>
           <button
             type="button"
-            onClick={() => navigate(`/admin/measurements/${id}`)}
+            onClick={() => navigate(`${basePath}/measurements/${id}`)}
             className="flex-1 bg-slate-200 text-slate-700 px-6 py-3 rounded-lg font-bold hover:bg-slate-300"
           >
             Cancel

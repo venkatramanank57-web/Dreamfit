@@ -15,11 +15,11 @@ import {
   Image as ImageIcon,
   Phone,
 } from "lucide-react";
-import { fetchOrderById, updateOrder, updateOrderStatus } from "../../features/order/orderSlice"; // ✅ Add updateOrder
-import { fetchGarmentsByOrder, deleteGarment } from "../../features/garment/garmentSlice";
-import { fetchAllCustomers } from "../../features/customer/customerSlice";
-import GarmentForm from "./GarmentForm";
-import showToast from "../../utils/toast";
+import { fetchOrderById, updateOrder, updateOrderStatus } from "../../../features/order/orderSlice";
+import { fetchGarmentsByOrder, deleteGarment } from "../../../features/garment/garmentSlice";
+import { fetchAllCustomers } from "../../../features/customer/customerSlice";
+import GarmentForm from "../garment/GarmentForm";
+import showToast from "../../../utils/toast";
 
 export default function EditOrder() {
   const { id } = useParams();
@@ -51,6 +51,11 @@ export default function EditOrder() {
   const isAdmin = user?.role === "ADMIN";
   const isStoreKeeper = user?.role === "STORE_KEEPER";
   const canEdit = isAdmin || isStoreKeeper;
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   useEffect(() => {
     if (id) {
@@ -162,7 +167,7 @@ export default function EditOrder() {
     }
 
     try {
-      // ✅ Prepare complete order update data
+      // Prepare complete order update data
       const orderUpdateData = {
         deliveryDate: formData.deliveryDate,
         specialNotes: formData.specialNotes,
@@ -171,24 +176,23 @@ export default function EditOrder() {
           method: formData.advancePayment.method,
         },
         status: formData.status,
-        // You might also want to update price summary based on garments
         priceSummary: {
           totalMin: priceSummary.min,
           totalMax: priceSummary.max,
         },
-        balanceAmount: balanceAmount.min, // or max? depends on your logic
+        balanceAmount: balanceAmount.min,
       };
 
       console.log("📤 Updating order with data:", orderUpdateData);
 
-      // ✅ Use updateOrder instead of just updateOrderStatus
       await dispatch(updateOrder({ 
         id, 
         orderData: orderUpdateData 
       })).unwrap();
       
       showToast.success("Order updated successfully");
-      navigate(`/admin/orders/${id}`);
+      // ✅ Navigate with basePath
+      navigate(`${basePath}/orders/${id}`);
     } catch (error) {
       console.error("❌ Update error:", error);
       showToast.error(error.message || "Failed to update order");
@@ -212,7 +216,7 @@ export default function EditOrder() {
         <h2 className="text-2xl font-bold text-slate-800">Access Denied</h2>
         <p className="text-slate-500 mt-2">You don't have permission to edit orders</p>
         <button
-          onClick={() => navigate(`/admin/orders/${id}`)}
+          onClick={() => navigate(`${basePath}/orders/${id}`)}
           className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg"
         >
           Go Back
@@ -236,7 +240,7 @@ export default function EditOrder() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate(`/admin/orders/${id}`)}
+          onClick={() => navigate(`${basePath}/orders/${id}`)}
           className="p-2 hover:bg-slate-100 rounded-xl transition-all"
         >
           <ArrowLeft size={20} className="text-slate-600" />
@@ -622,7 +626,7 @@ export default function EditOrder() {
 
               <button
                 type="button"
-                onClick={() => navigate(`/admin/orders/${id}`)}
+                onClick={() => navigate(`${basePath}/orders/${id}`)}
                 className="w-full px-6 py-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-black uppercase tracking-wider transition-all"
               >
                 Cancel

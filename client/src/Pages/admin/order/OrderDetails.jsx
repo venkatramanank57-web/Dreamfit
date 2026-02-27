@@ -30,10 +30,10 @@ import {
   fetchOrderById,
   deleteOrder,
   updateOrderStatus,
-} from "../../features/order/orderSlice";
-import { fetchGarmentsByOrder } from "../../features/garment/garmentSlice";
-import OrderInvoice from "../../components/OrderInvoice";
-import showToast from "../../utils/toast";
+} from "../../../features/order/orderSlice";
+import { fetchGarmentsByOrder } from "../../../features/garment/garmentSlice";
+import OrderInvoice from "../../../components/OrderInvoice";
+import showToast from "../../../utils/toast";
 
 // ==================== IMAGE MODAL COMPONENT ====================
 const ImageModal = ({ isOpen, image, imageType, onClose }) => {
@@ -142,6 +142,11 @@ export default function OrderDetails() {
   const isStoreKeeper = user?.role === "STORE_KEEPER";
   const canEdit = isAdmin || isStoreKeeper;
 
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
+
   useEffect(() => {
     if (id) {
       console.log("🔍 Fetching order details for ID:", id);
@@ -175,13 +180,15 @@ export default function OrderDetails() {
     }
   }, [garments]);
 
+  // ✅ Handle Back - with basePath
   const handleBack = () => {
-    navigate("/admin/orders");
+    navigate(`${basePath}/orders`);
   };
 
+  // ✅ Handle Edit - with basePath
   const handleEdit = () => {
     if (canEdit) {
-      navigate(`/admin/orders/edit/${id}`);
+      navigate(`${basePath}/orders/edit/${id}`);
     } else {
       showToast.error("You don't have permission to edit orders");
     }
@@ -197,7 +204,8 @@ export default function OrderDetails() {
       try {
         await dispatch(deleteOrder(id)).unwrap();
         showToast.success("Order deleted successfully");
-        navigate("/admin/orders");
+        // ✅ Navigate with basePath
+        navigate(`${basePath}/orders`);
       } catch (error) {
         showToast.error("Failed to delete order");
       }
@@ -219,8 +227,9 @@ export default function OrderDetails() {
     }
   };
 
+  // ✅ Handle View Garment - with basePath
   const handleViewGarment = (garmentId) => {
-    navigate(`/admin/garments/${garmentId}`);
+    navigate(`${basePath}/garments/${garmentId}`);
   };
 
   // Handle Invoice Download
@@ -237,12 +246,12 @@ export default function OrderDetails() {
     window.print();
   };
 
-  // ✅ Handle Send Acknowledgment
+  // Handle Send Acknowledgment
   const handleSendAcknowledgment = () => {
     showToast.success("Acknowledgment sent to customer");
   };
 
-  // ✅ Handle Ready for Pickup
+  // Handle Ready for Pickup
   const handleReadyForPickup = () => {
     showToast.success("Pickup notification sent to customer");
   };
@@ -525,7 +534,7 @@ export default function OrderDetails() {
               </h2>
               {canEdit && (
                 <button
-                  onClick={() => navigate(`/admin/orders/${id}/add-garment`)}
+                  onClick={() => navigate(`${basePath}/orders/${id}/add-garment`)}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2"
                 >
                   <Plus size={16} />
@@ -838,7 +847,7 @@ export default function OrderDetails() {
                 </div>
               </div>
 
-              {/* ✅ TWO NEW BUTTONS ADDED HERE - BOTTOM OF PAGE */}
+              {/* TWO NEW BUTTONS ADDED HERE - BOTTOM OF PAGE */}
               <div className="space-y-3 pt-2">
                 <button
                   onClick={handleSendAcknowledgment}

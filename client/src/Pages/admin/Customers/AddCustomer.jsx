@@ -5,8 +5,8 @@ import {
   User, Phone, Mail, MapPin, Home, ChevronRight, X, Save, 
   Building, Globe, BookOpen, AlertCircle, Hash
 } from "lucide-react";
-import { createNewCustomer } from "../../features/customer/customerSlice";
-import showToast from "../../utils/toast";
+import { createNewCustomer } from "../../../features/customer/customerSlice";
+import showToast from "../../../utils/toast";
 
 export default function AddCustomer() {
   const navigate = useNavigate();
@@ -31,10 +31,10 @@ export default function AddCustomer() {
 
   const [errors, setErrors] = useState({});
 
-  const rolePath = user?.role === "ADMIN" ? "admin" : 
-                   user?.role === "MANAGER" ? "manager" :
-                   user?.role === "STORE_KEEPER" ? "storekeeper" : 
-                   "cuttingmaster";
+  // ✅ Get base path based on user role
+  const rolePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -133,7 +133,8 @@ export default function AddCustomer() {
     try {
       await dispatch(createNewCustomer(customerData)).unwrap();
       showToast.success("Customer created successfully! 🎉");
-      navigate(`/${rolePath}/customers`);
+      // ✅ Navigate with rolePath
+      navigate(`${rolePath}/customers`);
     } catch (error) {
       console.error("Error creating customer:", error);
       
@@ -157,8 +158,9 @@ export default function AddCustomer() {
     }
   };
 
+  // ✅ Handle Cancel - with rolePath
   const handleCancel = () => {
-    navigate(`/${rolePath}/customers`);
+    navigate(`${rolePath}/customers`);
   };
 
   // Get full name for display

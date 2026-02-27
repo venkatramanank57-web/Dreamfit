@@ -3,8 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { ArrowLeft, Save, X, Upload } from "lucide-react";
-import { fetchFabricById, updateFabric } from "../../features/fabric/fabricSlice";
-import showToast from "../../utils/toast";
+import { fetchFabricById, updateFabric } from "../../../features/fabric/fabricSlice";
+import showToast from "../../../utils/toast";
 
 export default function EditFabric() {
   const { id } = useParams();
@@ -12,7 +12,17 @@ export default function EditFabric() {
   const dispatch = useDispatch();
   
   const { currentFabric, loading } = useSelector((state) => state.fabric);
-  
+  const { user } = useSelector((state) => state.auth);
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
+
+  const isAdmin = user?.role === "ADMIN";
+  const isStoreKeeper = user?.role === "STORE_KEEPER";
+  const canEdit = isAdmin || isStoreKeeper;
+
   const [formData, setFormData] = useState({
     name: "",
     color: "",
@@ -37,6 +47,14 @@ export default function EditFabric() {
     }
   }, [currentFabric]);
 
+  // Check if user has permission to edit
+  useEffect(() => {
+    if (!canEdit && !loading && currentFabric) {
+      showToast.error("You don't have permission to edit fabrics");
+      navigate(`${basePath}/fabrics/${id}`);
+    }
+  }, [canEdit, loading, currentFabric, navigate, basePath, id]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -60,6 +78,11 @@ export default function EditFabric() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit fabrics");
+      return;
+    }
+
     if (!formData.name || !formData.color || !formData.pricePerMeter) {
       showToast.error("Please fill all required fields");
       return;
@@ -76,7 +99,7 @@ export default function EditFabric() {
 
       await dispatch(updateFabric({ id, fabricData: formDataToSend })).unwrap();
       showToast.success("Fabric updated successfully! ✅");
-      navigate(`/admin/fabrics/${id}`);
+      navigate(`${basePath}/fabrics/${id}`);
     } catch (error) {
       showToast.error(error || "Update failed");
     }
@@ -93,7 +116,7 @@ export default function EditFabric() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <button 
-        onClick={() => navigate(`/admin/fabrics/${id}`)} 
+        onClick={() => navigate(`${basePath}/fabrics/${id}`)} 
         className="flex items-center gap-2 text-slate-600 hover:text-blue-600 mb-6"
       >
         <ArrowLeft size={20} /> Back to Fabric Details
@@ -102,6 +125,9 @@ export default function EditFabric() {
       <div className="bg-white rounded-2xl shadow-lg border overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-6 text-white">
           <h1 className="text-2xl font-bold">Edit Fabric</h1>
+          {!canEdit && (
+            <p className="text-sm text-red-200 mt-2">You don't have permission to edit</p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -111,7 +137,10 @@ export default function EditFabric() {
             placeholder="Fabric Name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full px-4 py-3 border rounded-lg"
+            disabled={!canEdit}
+            className={`w-full px-4 py-3 border rounded-lg ${
+              !canEdit ? 'bg-slate-100 cursor-not-allowed' : ''
+            }`}
             required
           />
           
@@ -121,7 +150,10 @@ export default function EditFabric() {
             placeholder="Color"
             value={formData.color}
             onChange={handleChange}
-            className="w-full px-4 py-3 border rounded-lg"
+            disabled={!canEdit}
+            className={`w-full px-4 py-3 border rounded-lg ${
+              !canEdit ? 'bg-slate-100 cursor-not-allowed' : ''
+            }`}
             required
           />
           
@@ -131,39 +163,51 @@ export default function EditFabric() {
             placeholder="Price per Meter (₹)"
             value={formData.pricePerMeter}
             onChange={handleChange}
-            className="w-full px-4 py-3 border rounded-lg"
+            disabled={!canEdit}
+            className={`w-full px-4 py-3 border rounded-lg ${
+              !canEdit ? 'bg-slate-100 cursor-not-allowed' : ''
+            }`}
             required
           />
 
           {formData.imagePreview && (
             <div className="relative">
               <img src={formData.imagePreview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, imageFile: null, imagePreview: null }))}
-                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
-              >
-                <X size={16} />
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, imageFile: null, imagePreview: null }))}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           )}
 
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50">
-            <Upload className="w-8 h-8 mb-2 text-slate-400" />
-            <p className="text-sm text-slate-500">Click to upload new image</p>
-            <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
-          </label>
+          {canEdit && (
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50">
+              <Upload className="w-8 h-8 mb-2 text-slate-400" />
+              <p className="text-sm text-slate-500">Click to upload new image</p>
+              <input type="file" className="hidden" accept="image/*" onChange={handleImageChange} />
+            </label>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 flex items-center justify-center gap-2"
+              disabled={!canEdit}
+              className={`flex-1 px-6 py-3 text-white rounded-lg font-bold flex items-center justify-center gap-2 ${
+                canEdit 
+                  ? 'bg-blue-600 hover:bg-blue-700' 
+                  : 'bg-slate-400 cursor-not-allowed'
+              }`}
             >
               <Save size={18} /> Update Fabric
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/admin/fabrics/${id}`)}
+              onClick={() => navigate(`${basePath}/fabrics/${id}`)}
               className="px-6 py-3 bg-slate-200 text-slate-700 rounded-lg font-bold hover:bg-slate-300"
             >
               Cancel

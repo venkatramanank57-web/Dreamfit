@@ -17,8 +17,8 @@ import {
   fetchAllOrders,
   deleteOrder,
   updateOrderStatus,
-} from "../../features/order/orderSlice";
-import showToast from "../../utils/toast";
+} from "../../../features/order/orderSlice";
+import showToast from "../../../utils/toast";
 
 export default function Orders() {
   const dispatch = useDispatch();

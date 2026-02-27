@@ -5,9 +5,9 @@ import {
   ArrowLeft, Edit, Trash2, Package, Calendar, 
   Layers, Power, Save, X
 } from "lucide-react";
-import { fetchItems, deleteItem, updateItem } from "../../features/item/itemSlice";
-import { fetchAllCategories } from "../../features/category/categorySlice";
-import showToast from "../../utils/toast";
+import { fetchItems, deleteItem, updateItem } from "../../../features/item/itemSlice";
+import { fetchAllCategories } from "../../../features/category/categorySlice";
+import showToast from "../../../utils/toast";
 
 export default function ItemDetail() {
   const { id } = useParams();
@@ -16,10 +16,21 @@ export default function ItemDetail() {
   
   const { items } = useSelector((state) => state.item);
   const { categories } = useSelector((state) => state.category);
+  const { user } = useSelector((state) => state.auth);
   
   const [isEditing, setIsEditing] = useState(false);
   const [itemName, setItemName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
+
+  const isAdmin = user?.role === "ADMIN";
+  const isStoreKeeper = user?.role === "STORE_KEEPER";
+  const canEdit = isAdmin || isStoreKeeper;
+  const canDelete = isAdmin; // Only Admin can delete
 
   const item = items?.find(i => i._id === id);
 
@@ -30,7 +41,7 @@ export default function ItemDetail() {
     if (!categories?.length) {
       dispatch(fetchAllCategories());
     }
-  }, [dispatch]);
+  }, [dispatch, items?.length, categories?.length]);
 
   useEffect(() => {
     if (item) {
@@ -40,11 +51,15 @@ export default function ItemDetail() {
   }, [item]);
 
   const handleDelete = async () => {
+    if (!canDelete) {
+      showToast.error("Only Admin can delete items");
+      return;
+    }
     if (window.confirm("Delete this item?")) {
       try {
         await dispatch(deleteItem(id)).unwrap();
         showToast.success("Item deleted");
-        navigate("/admin/products?tab=item");
+        navigate(`${basePath}/products?tab=item`);
       } catch (error) {
         showToast.error("Delete failed");
       }
@@ -52,6 +67,10 @@ export default function ItemDetail() {
   };
 
   const handleUpdate = async () => {
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit items");
+      return;
+    }
     if (!itemName.trim()) {
       showToast.error("Item name is required");
       return;
@@ -75,7 +94,7 @@ export default function ItemDetail() {
         <Package size={64} className="mx-auto text-slate-300 mb-4" />
         <h2 className="text-2xl font-bold text-slate-800">Item Not Found</h2>
         <button 
-          onClick={() => navigate("/admin/products?tab=item")}
+          onClick={() => navigate(`${basePath}/products?tab=item`)}
           className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
         >
           Back to Items
@@ -88,7 +107,7 @@ export default function ItemDetail() {
     <div className="max-w-4xl mx-auto p-6 animate-in fade-in duration-500">
       {/* Back Button */}
       <button 
-        onClick={() => navigate("/admin/products?tab=item")} 
+        onClick={() => navigate(`${basePath}/products?tab=item`)} 
         className="flex items-center gap-2 text-slate-600 hover:text-blue-600 mb-6 group"
       >
         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
@@ -110,18 +129,22 @@ export default function ItemDetail() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button 
-                onClick={() => setIsEditing(!isEditing)}
-                className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2"
-              >
-                <Edit size={18} /> {isEditing ? 'Cancel' : 'Edit'}
-              </button>
-              <button 
-                onClick={handleDelete}
-                className="bg-red-500/20 hover:bg-red-500/30 px-4 py-2 rounded-lg flex items-center gap-2"
-              >
-                <Trash2 size={18} /> Delete
-              </button>
+              {canEdit && (
+                <button 
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center gap-2"
+                >
+                  <Edit size={18} /> {isEditing ? 'Cancel' : 'Edit'}
+                </button>
+              )}
+              {canDelete && (
+                <button 
+                  onClick={handleDelete}
+                  className="bg-red-500/20 hover:bg-red-500/30 px-4 py-2 rounded-lg flex items-center gap-2"
+                >
+                  <Trash2 size={18} /> Delete
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -211,7 +234,7 @@ export default function ItemDetail() {
                     <span className="font-mono">{item.category?._id}</span>
                   </p>
                   <button
-                    onClick={() => navigate(`/admin/categories/${item.category?._id}`)}
+                    onClick={() => navigate(`${basePath}/categories/${item.category?._id}`)}
                     className="mt-2 text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center gap-1"
                   >
                     View Category Details →
@@ -256,22 +279,24 @@ export default function ItemDetail() {
             <h3 className="font-bold text-slate-800 mb-3">Quick Actions</h3>
             <div className="flex gap-3">
               <button
-                onClick={() => navigate("/admin/products?tab=item")}
+                onClick={() => navigate(`${basePath}/products?tab=item`)}
                 className="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 transition-all"
               >
                 View All Items
               </button>
-              <button
-                onClick={() => {
-                  navigate("/admin/products?tab=item");
-                  setTimeout(() => {
-                    document.querySelector('[data-add-button]')?.click();
-                  }, 100);
-                }}
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all"
-              >
-                Add New Item
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    navigate(`${basePath}/products?tab=item`);
+                    setTimeout(() => {
+                      document.querySelector('[data-add-button]')?.click();
+                    }, 100);
+                  }}
+                  className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-all"
+                >
+                  Add New Item
+                </button>
+              )}
             </div>
           </div>
         </div>

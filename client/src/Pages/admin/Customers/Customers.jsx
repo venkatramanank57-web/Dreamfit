@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Search, UserPlus, ShoppingBag, User, MapPin, Phone, Mail, Calendar, PlusCircle, Eye, Hash } from "lucide-react"; // ✅ Added Hash icon for ID
+import { Search, UserPlus, ShoppingBag, User, MapPin, Phone, Mail, Calendar, PlusCircle, Eye, Hash } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { searchCustomerByPhone, clearCustomerState, fetchAllCustomers } from "../../features/customer/customerSlice";
+import { searchCustomerByPhone, clearCustomerState, fetchAllCustomers } from "../../../features/customer/customerSlice";
 import { useNavigate } from "react-router-dom";
-import showToast from "../../utils/toast";
+import showToast from "../../../utils/toast";
 
 export default function Customers() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,10 +14,10 @@ export default function Customers() {
   const { customers, loading, error } = useSelector((state) => state.customer);
   const { user } = useSelector((state) => state.auth);
 
-  const rolePath = user?.role === "ADMIN" ? "admin" : 
-                   user?.role === "MANAGER" ? "manager" :
-                   user?.role === "STORE_KEEPER" ? "storekeeper" : 
-                   "cuttingmaster";
+  // ✅ Get base path based on user role
+  const rolePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   // Fetch all customers on component mount
   useEffect(() => {
@@ -107,19 +107,19 @@ export default function Customers() {
     return `${customer.salutation || ''} ${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown';
   };
 
-  // Navigate to customer details
+  // Navigate to customer details - with rolePath
   const viewCustomerDetails = (customerId) => {
-    navigate(`/${rolePath}/customers/${customerId}`);
+    navigate(`${rolePath}/customers/${customerId}`);
   };
 
-  // Navigate to add customer page
+  // Navigate to add customer page - with rolePath
   const goToAddCustomer = () => {
-    navigate(`/${rolePath}/add-customer`);
+    navigate(`${rolePath}/add-customer`);
   };
 
-  // Navigate to create order
+  // Navigate to create order - with rolePath
   const goToCreateOrder = (customer) => {
-    navigate(`/${rolePath}/orders/new`, { state: { customer } });
+    navigate(`${rolePath}/orders/new`, { state: { customer } });
   };
 
   return (

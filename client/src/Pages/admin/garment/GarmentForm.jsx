@@ -12,11 +12,11 @@ import {
   Camera,
   Scissors,
 } from "lucide-react";
-import { fetchAllCategories } from "../../features/category/categorySlice";
-import { fetchItems } from "../../features/item/itemSlice";
-import { fetchAllSizeFields } from "../../features/sizeField/sizeFieldSlice";
-import { fetchAllTemplates } from "../../features/sizeTemplate/sizeTemplateSlice";
-import showToast from "../../utils/toast";
+import { fetchAllCategories } from "../../../features/category/categorySlice";
+import { fetchItems } from "../../../features/item/itemSlice";
+import { fetchAllSizeFields } from "../../../features/sizeField/sizeFieldSlice";
+import { fetchAllTemplates } from "../../../features/sizeTemplate/sizeTemplateSlice";
+import showToast from "../../../utils/toast";
 
 export default function GarmentForm({ onClose, onSave, editingGarment }) {
   const dispatch = useDispatch();
@@ -27,6 +27,12 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
   const { templates } = useSelector((state) => state.sizeTemplate);
   const { user } = useSelector((state) => state.auth);
   const { currentCustomer } = useSelector((state) => state.customer);
+
+  // ✅ Get user role for any future permissions
+  const userRole = user?.role;
+  const isAdmin = userRole === "ADMIN";
+  const isStoreKeeper = userRole === "STORE_KEEPER";
+  const canEdit = isAdmin || isStoreKeeper;
 
   const [formData, setFormData] = useState({
     name: "",

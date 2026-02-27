@@ -23,20 +23,20 @@ import {
   updateFabric,
   deleteFabric,
   toggleFabricStatus,
-} from "../../features/fabric/fabricSlice";
+} from "../../../features/fabric/fabricSlice";
 import {
   fetchAllCategories,
   createCategory,
   updateCategory,
   deleteCategory,
-} from "../../features/category/categorySlice";
+} from "../../../features/category/categorySlice";
 import {
   fetchItems,
   createItem,
   updateItem,
   deleteItem,
-} from "../../features/item/itemSlice";
-import showToast from "../../utils/toast";
+} from "../../../features/item/itemSlice";
+import showToast from "../../../utils/toast";
 
 export default function Products() {
   const dispatch = useDispatch();
@@ -47,15 +47,23 @@ export default function Products() {
   const { fabrics } = useSelector((state) => state.fabric);
   const { categories } = useSelector((state) => state.category);
   const { items } = useSelector((state) => state.item);
-  const { user } = useSelector((state) => state.auth); // Get user for role check
+  const { user } = useSelector((state) => state.auth);
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   // UI state
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [showInactive, setShowInactive] = useState(false); // Toggle for inactive items
+  const [showInactive, setShowInactive] = useState(false);
 
-  const isAdmin = user?.role === "ADMIN"; // Check if user is Admin
+  const isAdmin = user?.role === "ADMIN";
+  const isStoreKeeper = user?.role === "STORE_KEEPER";
+  const canEdit = isAdmin || isStoreKeeper; // Both Admin and Store Keeper can edit
+  const canDelete = isAdmin; // Only Admin can delete
 
   // Form states
   const [fabricForm, setFabricForm] = useState({
@@ -75,12 +83,20 @@ export default function Products() {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(fetchItems(selectedCategory));
+    if (selectedCategory) {
+      dispatch(fetchItems(selectedCategory));
+    } else {
+      dispatch(fetchItems());
+    }
   }, [selectedCategory, dispatch]);
 
   // ========== FABRIC FUNCTIONS ==========
   const handleFabricSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit fabrics");
+      return;
+    }
     if (!fabricForm.name || !fabricForm.color || !fabricForm.pricePerMeter) {
       showToast.error("Please fill all required fields");
       return;
@@ -112,6 +128,10 @@ export default function Products() {
   // ========== CATEGORY FUNCTIONS ==========
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit categories");
+      return;
+    }
     if (!categoryForm.name) {
       showToast.error("Category name is required");
       return;
@@ -137,6 +157,10 @@ export default function Products() {
   // ========== ITEM FUNCTIONS ==========
   const handleItemSubmit = async (e) => {
     e.preventDefault();
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit items");
+      return;
+    }
     if (!itemForm.name || !itemForm.categoryId) {
       showToast.error("Please fill all required fields");
       return;
@@ -176,6 +200,10 @@ export default function Products() {
   };
 
   const handleEdit = (item) => {
+    if (!canEdit) {
+      showToast.error("You don't have permission to edit");
+      return;
+    }
     setEditingItem(item);
     if (activeTab === "fabric") {
       setFabricForm({
@@ -194,6 +222,10 @@ export default function Products() {
   };
 
   const handleDelete = async (id) => {
+    if (!canDelete) {
+      showToast.error("Only Admin can delete items");
+      return;
+    }
     if (window.confirm("Are you sure you want to delete this item?")) {
       try {
         if (activeTab === "fabric") {
@@ -212,8 +244,11 @@ export default function Products() {
     }
   };
 
-  // ✅ Toggle status with proper message
   const handleToggleStatus = async (id, currentStatus) => {
+    if (!canEdit) {
+      showToast.error("You don't have permission to change status");
+      return;
+    }
     try {
       if (activeTab === "fabric") {
         await dispatch(toggleFabricStatus(id)).unwrap();
@@ -225,10 +260,11 @@ export default function Products() {
     }
   };
 
+  // ✅ Handle View Details - with basePath
   const handleViewDetails = (id) => {
-    if (activeTab === "fabric") navigate(`/admin/fabrics/${id}`);
-    else if (activeTab === "category") navigate(`/admin/categories/${id}`);
-    else navigate(`/admin/items/${id}`);
+    if (activeTab === "fabric") navigate(`${basePath}/fabrics/${id}`);
+    else if (activeTab === "category") navigate(`${basePath}/categories/${id}`);
+    else navigate(`${basePath}/items/${id}`);
   };
 
   const handleImageChange = (e) => {
@@ -253,16 +289,16 @@ export default function Products() {
     }
   };
 
-  // Filter items based on showInactive toggle (for Admin)
-  const filteredFabrics = isAdmin && showInactive 
+  // Filter items based on showInactive toggle (for Admin only)
+  const filteredFabrics = (isAdmin && showInactive) 
     ? fabrics 
     : fabrics?.filter(f => f.isActive !== false);
   
-  const filteredCategories = isAdmin && showInactive 
+  const filteredCategories = (isAdmin && showInactive) 
     ? categories 
     : categories?.filter(c => c.isActive !== false);
   
-  const filteredItems = isAdmin && showInactive 
+  const filteredItems = (isAdmin && showInactive) 
     ? items 
     : items?.filter(i => i.isActive !== false);
 
@@ -297,7 +333,6 @@ export default function Products() {
                 : tab === "category"
                   ? "📁 Categories"
                   : "🧵 Items"}
-              {/* Show count for each tab */}
               <span
                 className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
                   activeTab === tab
@@ -336,7 +371,7 @@ export default function Products() {
                 : activeTab === "category"
                   ? "Categories"
                   : "Items"}
-              {showInactive && (
+              {showInactive && isAdmin && (
                 <span className="ml-3 text-sm font-normal text-purple-600">
                   (Showing inactive)
                 </span>
@@ -377,21 +412,24 @@ export default function Products() {
               </button>
             )}
 
-            <button
-              onClick={() => {
-                resetForms();
-                setShowModal(true);
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
-            >
-              <Plus size={20} />
-              Add{" "}
-              {activeTab === "fabric"
-                ? "Fabric"
-                : activeTab === "category"
-                  ? "Category"
-                  : "Item"}
-            </button>
+            {/* Add Button - Only for Admin and Store Keeper */}
+            {canEdit && (
+              <button
+                onClick={() => {
+                  resetForms();
+                  setShowModal(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
+              >
+                <Plus size={20} />
+                Add{" "}
+                {activeTab === "fabric"
+                  ? "Fabric"
+                  : activeTab === "category"
+                    ? "Category"
+                    : "Item"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -451,27 +489,35 @@ export default function Products() {
                         >
                           <Eye size={16} />
                         </button>
-                        <button
-                          onClick={() => handleToggleStatus(fabric._id, fabric.isActive)}
-                          className={`p-2 rounded-lg ${fabric.isActive ? "bg-green-100 text-green-600 hover:bg-green-200" : "bg-orange-100 text-orange-600 hover:bg-orange-200"}`}
-                          title={fabric.isActive ? "Deactivate" : "Activate"}
-                        >
-                          <Power size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(fabric)}
-                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                          title="Edit"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(fabric._id)}
-                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        
+                        {canEdit && (
+                          <>
+                            <button
+                              onClick={() => handleToggleStatus(fabric._id, fabric.isActive)}
+                              className={`p-2 rounded-lg ${fabric.isActive ? "bg-green-100 text-green-600 hover:bg-green-200" : "bg-orange-100 text-orange-600 hover:bg-orange-200"}`}
+                              title={fabric.isActive ? "Deactivate" : "Activate"}
+                            >
+                              <Power size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(fabric)}
+                              className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+                              title="Edit"
+                            >
+                              <Edit size={16} />
+                            </button>
+                          </>
+                        )}
+                        
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(fabric._id)}
+                            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -511,18 +557,24 @@ export default function Products() {
                       >
                         <Eye size={16} />
                       </button>
-                      <button
-                        onClick={() => handleEdit(category)}
-                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(category._id)}
-                        className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      
+                      {canEdit && (
+                        <button
+                          onClick={() => handleEdit(category)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      )}
+                      
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(category._id)}
+                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -561,18 +613,24 @@ export default function Products() {
                       >
                         <Eye size={16} />
                       </button>
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item._id)}
-                        className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      
+                      {canEdit && (
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      )}
+                      
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(item._id)}
+                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

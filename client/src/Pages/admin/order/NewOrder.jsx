@@ -13,11 +13,11 @@ import {
   Package,
   ChevronDown,
 } from "lucide-react";
-import { createOrder } from "../../features/order/orderSlice";
-import { createGarment } from "../../features/garment/garmentSlice";
-import { fetchAllCustomers } from "../../features/customer/customerSlice";
-import GarmentForm from "./GarmentForm";
-import showToast from "../../utils/toast";
+import { createOrder } from "../../../features/order/orderSlice";
+import { createGarment } from "../../../features/garment/garmentSlice";
+import { fetchAllCustomers } from "../../../features/customer/customerSlice";
+import GarmentForm from "../garment/GarmentForm";
+import showToast from "../../../utils/toast";
 
 export default function NewOrder() {
   const dispatch = useDispatch();
@@ -71,6 +71,11 @@ export default function NewOrder() {
   // Get user ID directly from user.id
   const userId = user?.id;
   const userRole = user?.role;
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   // Enhanced user debugging
   useEffect(() => {
@@ -209,7 +214,7 @@ export default function NewOrder() {
     }
   }, [garments]);
 
-  // ✅ FIXED: Handle FormData from GarmentForm
+  // FIXED: Handle FormData from GarmentForm
   const handleSaveGarment = useCallback((garmentData) => {
     console.log("📦 Received garment data:", garmentData);
     
@@ -440,7 +445,7 @@ export default function NewOrder() {
         garmentFormData.append("orderId", orderId);
         garmentFormData.append("createdBy", finalUserId);
 
-        // ✅ Add images with correct field names
+        // Add images with correct field names
         if (garment.referenceImages && garment.referenceImages.length > 0) {
           console.log(`📸 Adding ${garment.referenceImages.length} reference images`);
           for (const img of garment.referenceImages) {
@@ -488,7 +493,8 @@ export default function NewOrder() {
       }
 
       showToast.success("Order created successfully! 🎉");
-      navigate("/admin/orders");
+      // ✅ Navigate with basePath
+      navigate(`${basePath}/orders`);
     } catch (error) {
       console.error('❌ Full error:', error);
       console.error('❌ Error response:', error.response?.data);
@@ -533,6 +539,7 @@ export default function NewOrder() {
           <div>Delivery Date: {formData.deliveryDate || 'Not set'}</div>
           <div>Customers Loaded: {customers?.length || 0}</div>
           <div>Filtered Customers: {filteredCustomers.length}</div>
+          <div>Base Path: {basePath}</div>
           <div className="text-yellow-400 font-bold">
             User Object: {user ? JSON.stringify(user).substring(0, 100) + '...' : '❌ No user'}
           </div>
@@ -554,7 +561,7 @@ export default function NewOrder() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate("/admin/orders")}
+          onClick={() => navigate(`${basePath}/orders`)}
           className="p-2 hover:bg-slate-100 rounded-xl transition-all"
         >
           <ArrowLeft size={20} className="text-slate-600" />
@@ -630,7 +637,7 @@ export default function NewOrder() {
                       <p className="text-slate-500">No customers found</p>
                       <button
                         type="button"
-                        onClick={() => navigate("/admin/customers/new")}
+                        onClick={() => navigate(`${basePath}/add-customer`)}
                         className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
                       >
                         + Create new customer
@@ -905,7 +912,7 @@ export default function NewOrder() {
 
               <button
                 type="button"
-                onClick={() => navigate("/admin/orders")}
+                onClick={() => navigate(`${basePath}/orders`)}
                 className="w-full px-6 py-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-black uppercase tracking-wider transition-all"
               >
                 Cancel

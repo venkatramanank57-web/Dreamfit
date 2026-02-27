@@ -5,8 +5,8 @@ import {
   Ruler, Plus, Search, Edit, Trash2, Eye, Power,
   ChevronLeft, ChevronRight, EyeOff
 } from "lucide-react";
-import { fetchAllTemplates, fetchAllTemplatesAdmin, deleteTemplate, toggleTemplateStatus } from "../../features/sizeTemplate/sizeTemplateSlice";
-import showToast from "../../utils/toast";
+import { fetchAllTemplates, fetchAllTemplatesAdmin, deleteTemplate, toggleTemplateStatus } from "../../../features/sizeTemplate/sizeTemplateSlice";
+import showToast from "../../../utils/toast";
 
 export default function Measurements() {
   const dispatch = useDispatch();
@@ -19,19 +19,35 @@ export default function Measurements() {
   
   const { user } = useSelector((state) => state.auth); // Get user for role check
   
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showInactive, setShowInactive] = useState(false); // Toggle for inactive templates
 
   const isAdmin = user?.role === "ADMIN"; // Check if user is Admin
+  const isStoreKeeper = user?.role === "STORE_KEEPER";
+  const isCuttingMaster = user?.role === "CUTTING_MASTER";
+  
+  // Permissions
+  const canEdit = isAdmin || isStoreKeeper;
+  const canDelete = isAdmin; // Only Admin can delete
+  const canToggle = isAdmin || isStoreKeeper;
+  const canViewInactive = isAdmin; // Only Admin can view inactive templates
 
   // Debug: Component mounted
   useEffect(() => {
     console.log("📌 Measurements component mounted");
     console.log("👤 User role:", user?.role);
     console.log("👑 Is Admin:", isAdmin);
-  }, [user]);
+    console.log("🏪 Is Store Keeper:", isStoreKeeper);
+    console.log("✂️ Is Cutting Master:", isCuttingMaster);
+    console.log("📍 Base Path:", basePath);
+  }, [user, basePath, isAdmin, isStoreKeeper, isCuttingMaster]);
 
   // Debounce search
   useEffect(() => {
@@ -88,16 +104,24 @@ export default function Measurements() {
 
   const handleViewDetails = (id) => {
     console.log("👁️ View details for ID:", id);
-    navigate(`/admin/measurements/${id}`);
+    navigate(`${basePath}/measurements/${id}`);
   };
 
   const handleEdit = (id) => {
     console.log("✏️ Edit template ID:", id);
-    navigate(`/admin/measurements/edit/${id}`);
+    if (canEdit) {
+      navigate(`${basePath}/measurements/edit/${id}`);
+    } else {
+      showToast.error("You don't have permission to edit templates");
+    }
   };
 
   const handleDelete = async (id, name) => {
     console.log("🗑️ Delete template:", id, name);
+    if (!canDelete) {
+      showToast.error("Only Admin can delete templates");
+      return;
+    }
     if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
       try {
         await dispatch(deleteTemplate(id)).unwrap();
@@ -112,6 +136,10 @@ export default function Measurements() {
 
   const handleToggleStatus = async (id, currentStatus) => {
     console.log("🔄 Toggle status for ID:", id, "Current:", currentStatus);
+    if (!canToggle) {
+      showToast.error("You don't have permission to toggle status");
+      return;
+    }
     try {
       await dispatch(toggleTemplateStatus(id)).unwrap();
       console.log("✅ Toggle successful");
@@ -124,7 +152,11 @@ export default function Measurements() {
 
   const handleAddNew = () => {
     console.log("➕ Add new template clicked");
-    navigate("/admin/measurements/new");
+    if (canEdit) {
+      navigate(`${basePath}/measurements/new`);
+    } else {
+      showToast.error("You don't have permission to create templates");
+    }
   };
 
   const handlePageChange = (newPage) => {
@@ -160,7 +192,7 @@ export default function Measurements() {
         
         <div className="flex gap-3">
           {/* Admin Only: Show Inactive Toggle */}
-          {isAdmin && (
+          {canViewInactive && (
             <button
               onClick={() => setShowInactive(!showInactive)}
               className={`px-4 py-3 rounded-xl font-bold transition-all flex items-center gap-2 ${
@@ -175,13 +207,15 @@ export default function Measurements() {
             </button>
           )}
           
-          <button
-            onClick={handleAddNew}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
-          >
-            <Plus size={20} />
-            Add New Template
-          </button>
+          {canEdit && (
+            <button
+              onClick={handleAddNew}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-500/25 flex items-center gap-2"
+            >
+              <Plus size={20} />
+              Add New Template
+            </button>
+          )}
         </div>
       </div>
 
@@ -240,31 +274,40 @@ export default function Measurements() {
                       >
                         <Eye size={18} />
                       </button>
-                      <button
-                        onClick={() => handleToggleStatus(template._id, template.isActive)}
-                        className={`p-2 rounded-lg transition-all ${
-                          template.isActive 
-                            ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                            : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                        }`}
-                        title={template.isActive ? 'Deactivate' : 'Activate'}
-                      >
-                        <Power size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(template._id)}
-                        className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
-                        title="Edit"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(template._id, template.name)}
-                        className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      
+                      {canToggle && (
+                        <button
+                          onClick={() => handleToggleStatus(template._id, template.isActive)}
+                          className={`p-2 rounded-lg transition-all ${
+                            template.isActive 
+                              ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                              : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                          }`}
+                          title={template.isActive ? 'Deactivate' : 'Activate'}
+                        >
+                          <Power size={18} />
+                        </button>
+                      )}
+                      
+                      {canEdit && (
+                        <button
+                          onClick={() => handleEdit(template._id)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
+                          title="Edit"
+                        >
+                          <Edit size={16} />
+                        </button>
+                      )}
+                      
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(template._id, template.name)}
+                          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -321,13 +364,15 @@ export default function Measurements() {
             <p className="text-slate-500 mb-6">
               {searchTerm ? `No templates matching "${searchTerm}"` : 'Create your first measurement template'}
             </p>
-            <button
-              onClick={handleAddNew}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold inline-flex items-center gap-2"
-            >
-              <Plus size={18} />
-              Add Template
-            </button>
+            {canEdit && (
+              <button
+                onClick={handleAddNew}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold inline-flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Add Template
+              </button>
+            )}
           </div>
         )}
       </div>

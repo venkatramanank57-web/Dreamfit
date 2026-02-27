@@ -36,12 +36,12 @@ export default function MainLayout() {
   const isStoreKeeper = user?.role === "STORE_KEEPER";
   const isCuttingMaster = user?.role === "CUTTING_MASTER";
   
-  // ✅ Updated Permissions:
+  // ✅ UPDATED PERMISSIONS:
   // Admin: Everything
-  // Store Keeper: Banking, Customers, Products, Shop Keeper, Reports (limited)
-  // Cutting Master: Dashboard, Works, Tailors, Measurements (NO Orders, NO Products)
+  // Store Keeper: Everything EXCEPT Staff & Settings (including FULL Banking access)
+  // Cutting Master: Dashboard, Works, Tailors ONLY (NO Measurements)
 
-  // Banking access - Admin AND Store Keeper
+  // ✅ FIX 1: Banking access - Admin AND Store Keeper (FULL access for Store Keeper)
   const canViewBanking = isAdmin || isStoreKeeper;
 
   // Customers access - Admin and Store Keeper only
@@ -62,8 +62,8 @@ export default function MainLayout() {
   // Works access - Everyone can see
   const canViewWorks = true;
 
-  // Measurement access - Admin, Store Keeper, and Cutting Master
-  const canViewMeasurement = isAdmin || isStoreKeeper || isCuttingMaster;
+  // ✅ FIX 2: Measurement access - Admin and Store Keeper ONLY (NO Cutting Master)
+  const canViewMeasurement = isAdmin || isStoreKeeper;
 
   // Tailors access - Everyone can see
   const canViewTailors = true;
@@ -158,7 +158,7 @@ export default function MainLayout() {
         description: 'Manage store keepers'
       },
       
-      // Measurements - Admin, Store Keeper, and Cutting Master
+      // Measurements - Admin and Store Keeper ONLY (NO Cutting Master)
       { 
         id: 'measurements', 
         icon: Ruler, 
@@ -188,8 +188,7 @@ export default function MainLayout() {
         description: 'Customer management'
       },
       
-      
-      // Banking - Admin and Store Keeper both can see (Dropdown)
+      // Banking - Admin and Store Keeper both can see (Dropdown) - FULL access for Store Keeper
       { 
         id: 'banking', 
         icon: Landmark, 
@@ -252,21 +251,18 @@ export default function MainLayout() {
   const navigationItems = getNavigationItems();
   const hasNoResults = filteredNavItems.length === 0 && searchQuery.trim() !== '';
 
-  // Banking sub-items
+  // ✅ UPDATED: Banking sub-items - FULL access for Store Keeper (same as Admin)
   const bankingItems = [
     { id: 'overview', label: 'Overview', icon: CreditCard, path: `/${rolePath}/banking/overview` },
-    ...(isAdmin ? [
+    ...(isAdmin || isStoreKeeper ? [ // Store Keeper gets full banking access
       { id: 'income', label: 'Income', icon: TrendingUp, path: `/${rolePath}/banking/income` },
       { id: 'expense', label: 'Expenses', icon: CreditCard, path: `/${rolePath}/banking/expense` },
       { id: 'transactions', label: 'Transactions', icon: FileText, path: `/${rolePath}/banking/transactions` },
     ] : []),
-    ...(isStoreKeeper ? [
-      { id: 'inventory', label: 'Inventory', icon: Package, path: `/${rolePath}/banking/inventory` },
-      { id: 'daily-sales', label: 'Daily Sales', icon: TrendingUp, path: `/${rolePath}/banking/daily-sales` },
-    ] : []),
+    // No separate inventory/daily-sales for Store Keeper - they get full access
   ];
 
-  // Reports sub-items
+  // Reports sub-items - Store Keeper gets limited reports
   const reportsItems = [
     { id: 'sales', label: 'Sales Report', icon: TrendingUp, path: `/${rolePath}/reports/sales` },
     { id: 'production', label: 'Production Report', icon: Briefcase, path: `/${rolePath}/reports/production` },
@@ -392,7 +388,7 @@ export default function MainLayout() {
                         <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                     </button>
                     
-                    {/* Banking Dropdown */}
+                    {/* Banking Dropdown - FULL ACCESS for Store Keeper */}
                     {item.id === 'banking' && bankingOpen && (
                       <div className="ml-9 mt-1 space-y-1 border-l border-slate-700 pl-4 py-1">
                         {bankingItems.map(subItem => (

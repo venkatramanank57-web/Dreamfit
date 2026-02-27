@@ -4,19 +4,27 @@ import { useNavigate } from "react-router-dom";
 import { 
   ArrowLeft, Save, X, CheckSquare, Square
 } from "lucide-react";
-import { fetchAllSizeFields } from "../../features/sizeField/sizeFieldSlice";
-import { createTemplate } from "../../features/sizeTemplate/sizeTemplateSlice";
-import showToast from "../../utils/toast";
+import { fetchAllSizeFields } from "../../../features/sizeField/sizeFieldSlice";
+import { createTemplate } from "../../../features/sizeTemplate/sizeTemplateSlice";
+import showToast from "../../../utils/toast";
 
 export default function NewTemplate() {
   const dispatch = useDispatch();
-  // ✅ FIX: useNavigate() not navigate()
   const navigate = useNavigate();
   
+  const { user } = useSelector((state) => state.auth);
+  
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
+
   // Debug: Component mounted
   useEffect(() => {
     console.log("📌 NewTemplate component mounted");
-  }, []);
+    console.log("👤 User role:", user?.role);
+    console.log("📍 Base Path:", basePath);
+  }, [user, basePath]);
 
   const { fields, loading } = useSelector((state) => {
     console.log("📊 Redux state - sizeField:", state.sizeField);
@@ -30,6 +38,19 @@ export default function NewTemplate() {
   });
 
   const [selectedFields, setSelectedFields] = useState({});
+
+  // Check if user has permission to create templates
+  const isAdmin = user?.role === "ADMIN";
+  const isStoreKeeper = user?.role === "STORE_KEEPER";
+  const canCreate = isAdmin || isStoreKeeper;
+
+  // Redirect if user doesn't have permission
+  useEffect(() => {
+    if (!canCreate) {
+      showToast.error("You don't have permission to create templates");
+      navigate(`${basePath}/measurements`);
+    }
+  }, [canCreate, navigate, basePath]);
 
   // Fetch size fields on mount
   useEffect(() => {
@@ -89,6 +110,11 @@ export default function NewTemplate() {
     e.preventDefault();
     console.log("📝 Form submitted with data:", formData);
     
+    if (!canCreate) {
+      showToast.error("You don't have permission to create templates");
+      return;
+    }
+    
     if (!formData.name.trim()) {
       console.log("❌ Validation failed: Template name required");
       showToast.error("Template name is required");
@@ -106,7 +132,7 @@ export default function NewTemplate() {
       const result = await dispatch(createTemplate(formData)).unwrap();
       console.log("✅ Template created successfully:", result);
       showToast.success("Template created successfully! 🎉");
-      navigate("/admin/measurements");
+      navigate(`${basePath}/measurements`);
     } catch (error) {
       console.error("❌ Create template failed:", error);
       showToast.error(error || "Failed to create template");
@@ -138,6 +164,11 @@ export default function NewTemplate() {
     );
   }
 
+  // Don't render if user doesn't have permission (redirect will happen)
+  if (!canCreate) {
+    return null;
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 p-6">
       {/* Header */}
@@ -145,7 +176,7 @@ export default function NewTemplate() {
         <button
           onClick={() => {
             console.log("🔙 Navigating back to measurements");
-            navigate("/admin/measurements");
+            navigate(`${basePath}/measurements`);
           }}
           className="p-2 hover:bg-slate-100 rounded-xl transition-all"
         >
@@ -244,7 +275,7 @@ export default function NewTemplate() {
             type="button"
             onClick={() => {
               console.log("🔙 Cancel button clicked");
-              navigate("/admin/measurements");
+              navigate(`${basePath}/measurements`);
             }}
             className="px-8 py-4 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl font-black uppercase tracking-wider transition-all hover:bg-slate-50"
           >

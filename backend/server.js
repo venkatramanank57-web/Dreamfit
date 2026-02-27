@@ -46,7 +46,7 @@ connectDB();
 
 // ==================== MIDDLEWARE ====================
 
-// ✅ FIX: Move CORS to the TOP - before any other middleware
+// CORS configuration
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
@@ -54,8 +54,6 @@ const allowedOrigins = [
   "http://localhost:5000",
   "https://dreamfit.vercel.app",
 ];
-
-
 
 app.use(
   cors({
@@ -76,7 +74,7 @@ app.use(
   })
 );
 
-// Security middleware (after CORS)
+// Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: { policy: "unsafe-none" }
@@ -92,23 +90,42 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("combined"));
 }
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply rate limiting to API routes
-app.use("/api/", limiter);
+// ==================== ✅ FIXED RATE LIMITING ====================
+// Skip rate limiting in development or set higher limits
+if (process.env.NODE_ENV === "production") {
+  // Production: Stricter but still reasonable limits
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5000, // Limit each IP to 5000 requests per windowMs (about 333 per minute)
+    message: "Too many requests from this IP, please try again later.",
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req) => {
+      // Skip rate limiting for static files
+      return req.url.startsWith('/uploads/');
+    }
+  });
+  app.use("/api/", limiter);
+  console.log("🔒 Production rate limit: 5000 requests/15min");
+} else {
+  // Development: Very high limits or disabled to avoid 429 errors
+  console.log("🔧 Development mode - Rate limiting DISABLED to prevent 429 errors");
+  // Optional: You can still apply a very high limit if needed
+  // const devLimiter = rateLimit({
+  //   windowMs: 60 * 1000, // 1 minute
+  //   max: 10000, // 10000 requests per minute
+  //   message: "Too many requests",
+  //   standardHeaders: true,
+  //   legacyHeaders: false,
+  // });
+  // app.use("/api/", devLimiter);
+}
 
 // Body parser
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Static files (if needed)
+// Static files
 app.use("/uploads", express.static("uploads"));
 
 // ==================== TEST ROUTE ====================

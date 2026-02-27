@@ -6,8 +6,8 @@ import {
   User, Mail, Lock, Phone, Briefcase, X, Save,
   AlertCircle, ChevronRight, UserCog, ArrowRight
 } from "lucide-react";
-import { createStaff } from "../../features/user/userSlice";
-import showToast from "../../utils/toast";
+import { createStaff } from "../../../features/user/userSlice";
+import showToast from "../../../utils/toast";
 
 export default function AddStaff() {
   const navigate = useNavigate();

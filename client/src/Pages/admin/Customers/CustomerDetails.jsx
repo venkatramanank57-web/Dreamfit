@@ -6,8 +6,8 @@ import {
   ChevronLeft, PlusCircle, AlertCircle, Edit, Trash2, 
   Save, X, Hash, MessageCircle, FileText, Star
 } from "lucide-react";
-import { fetchCustomerById, updateCustomer, deleteCustomer } from "../../features/customer/customerSlice";
-import showToast from "../../utils/toast";
+import { fetchCustomerById, updateCustomer, deleteCustomer } from "../../../features/customer/customerSlice";
+import showToast from "../../../utils/toast";
 
 export default function CustomerDetails() {
   const { id } = useParams();
@@ -34,10 +34,10 @@ export default function CustomerDetails() {
     notes: ""
   });
 
-  const rolePath = user?.role === "ADMIN" ? "admin" : 
-                   user?.role === "MANAGER" ? "manager" :
-                   user?.role === "STORE_KEEPER" ? "storekeeper" : 
-                   "cuttingmaster";
+  // ✅ Get base path based on user role
+  const rolePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   // Check if user can perform CRUD operations
   const canEdit = user?.role === "ADMIN" || user?.role === "STORE_KEEPER";
@@ -69,12 +69,14 @@ export default function CustomerDetails() {
     }
   }, [currentCustomer]);
 
+  // ✅ Handle Back - with rolePath
   const handleBack = () => {
-    navigate(`/${rolePath}/customers`);
+    navigate(`${rolePath}/customers`);
   };
 
+  // ✅ Handle Create Order - with rolePath
   const handleCreateOrder = () => {
-    navigate(`/${rolePath}/orders/new`, { 
+    navigate(`${rolePath}/orders/new`, { 
       state: { customer: currentCustomer } 
     });
   };
@@ -143,12 +145,13 @@ export default function CustomerDetails() {
     }
   };
 
+  // ✅ Handle Delete - with rolePath for navigation
   const handleDelete = async () => {
     try {
       await dispatch(deleteCustomer(id)).unwrap();
       showToast.success("Customer deleted successfully! 🗑️");
       setShowDeleteModal(false);
-      navigate(`/${rolePath}/customers`);
+      navigate(`${rolePath}/customers`);
     } catch (error) {
       showToast.error(error.message || "Failed to delete customer");
     }

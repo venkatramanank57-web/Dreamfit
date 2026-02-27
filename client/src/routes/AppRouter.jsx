@@ -12,33 +12,33 @@ import Login from "../Pages/auth/Login";
 
 // Page Components
 import AdminDashboard from "../Pages/admin/AdminDashboard";
-import Orders from "../Pages/admin/Orders";
-import Customer from "../Pages/common/Customers";
-import AddCustomer from "../Pages/common/AddCustomer";
-import CustomerDetails from "../Pages/common/CustomerDetails";
+import Orders from "../Pages/admin/order/Orders";
+import Customer from "../Pages/admin/Customers/Customers";
+import AddCustomer from "../Pages/admin/Customers/AddCustomer";
+import CustomerDetails from "../Pages/admin/Customers/CustomerDetails";
 import Staff from "../Pages/admin/staff/Staff";
 import StaffDetails from "../Pages/admin/staff/StaffDetails";
-import AddStaff from "../Pages/common/AddStaff";
+import AddStaff from "../Pages/admin/staff/AddStaff";
 
 // Product Management Components
-import Products from "../Pages/admin/Products";
-import FabricDetail from "../Pages/admin/FabricDetail";
-import CategoryDetail from "../Pages/admin/CategoryDetail";
-import ItemDetail from "../Pages/admin/ItemDetail";
-import EditFabric from "../Pages/admin/EditFabric";
+import Products from "../Pages/admin/Products/Products";
+import FabricDetail from "../Pages/admin/Products/FabricDetail";
+import CategoryDetail from "../Pages/admin/Products/CategoryDetail";
+import ItemDetail from "../Pages/admin/Products/ItemDetail";
+import EditFabric from "../Pages/admin/Products/EditFabric";
 
 // Measurement Components
-import Measurements from "../Pages/admin/Measurements";
-import NewTemplate from "../Pages/admin/NewTemplate";
-import TemplateDetails from "../Pages/admin/TemplateDetails";
-import EditTemplate from "../Pages/admin/EditTemplate";
+import Measurements from "../Pages/admin/Measurements/Measurements";
+import NewTemplate from "../Pages/admin/Measurements/NewTemplate";
+import TemplateDetails from "../Pages/admin/Measurements/TemplateDetails";
+import EditTemplate from "../Pages/admin/Measurements/EditTemplate";
 
 // ✅ ORDER MANAGEMENT COMPONENTS
-import NewOrder from "../Pages/admin/NewOrder";
-import OrderDetails from "../Pages/admin/OrderDetails";
+import NewOrder from "../Pages/admin/order/NewOrder";
+import OrderDetails from "../Pages/admin/order/OrderDetails";
 import WorkPage from "../Pages/admin/WorkPage";
 import GarmentDetails from "../Pages/admin/garment/GarmentDetails";
-import EditOrder from "../Pages/admin/EditOrder";
+import EditOrder from "../Pages/admin/order/EditOrder";
 import EditGarment from "../Pages/admin/garment/EditGarment"; 
 
 // ✅ TAILOR MANAGEMENT COMPONENTS
