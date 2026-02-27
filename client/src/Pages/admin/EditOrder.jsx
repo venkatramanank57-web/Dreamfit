@@ -15,7 +15,7 @@ import {
   Image as ImageIcon,
   Phone,
 } from "lucide-react";
-import { fetchOrderById, updateOrderStatus } from "../../features/order/orderSlice";
+import { fetchOrderById, updateOrder, updateOrderStatus } from "../../features/order/orderSlice"; // ✅ Add updateOrder
 import { fetchGarmentsByOrder, deleteGarment } from "../../features/garment/garmentSlice";
 import { fetchAllCustomers } from "../../features/customer/customerSlice";
 import GarmentForm from "./GarmentForm";
@@ -46,6 +46,7 @@ export default function EditOrder() {
   const [editingGarment, setEditingGarment] = useState(null);
   const [expandedGarment, setExpandedGarment] = useState(null);
   const [customerName, setCustomerName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isAdmin = user?.role === "ADMIN";
   const isStoreKeeper = user?.role === "STORE_KEEPER";
@@ -146,27 +147,53 @@ export default function EditOrder() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     if (!formData.customer) {
       showToast.error("Please select a customer");
+      setIsSubmitting(false);
       return;
     }
 
     if (!formData.deliveryDate) {
       showToast.error("Please select delivery date");
+      setIsSubmitting(false);
       return;
     }
 
     try {
-      await dispatch(updateOrderStatus({ 
+      // ✅ Prepare complete order update data
+      const orderUpdateData = {
+        deliveryDate: formData.deliveryDate,
+        specialNotes: formData.specialNotes,
+        advancePayment: {
+          amount: Number(formData.advancePayment.amount) || 0,
+          method: formData.advancePayment.method,
+        },
+        status: formData.status,
+        // You might also want to update price summary based on garments
+        priceSummary: {
+          totalMin: priceSummary.min,
+          totalMax: priceSummary.max,
+        },
+        balanceAmount: balanceAmount.min, // or max? depends on your logic
+      };
+
+      console.log("📤 Updating order with data:", orderUpdateData);
+
+      // ✅ Use updateOrder instead of just updateOrderStatus
+      await dispatch(updateOrder({ 
         id, 
-        status: formData.status 
+        orderData: orderUpdateData 
       })).unwrap();
       
       showToast.success("Order updated successfully");
       navigate(`/admin/orders/${id}`);
     } catch (error) {
-      showToast.error("Failed to update order");
+      console.error("❌ Update error:", error);
+      showToast.error(error.message || "Failed to update order");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -224,7 +251,7 @@ export default function EditOrder() {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Customer Details - SIMPLIFIED VERSION */}
+          {/* Customer Details */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
               <User size={20} className="text-blue-600" />
@@ -234,7 +261,6 @@ export default function EditOrder() {
             {minimalCustomer ? (
               <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  {/* Left side - Name and Phone */}
                   <div className="space-y-2">
                     <div>
                       <p className="text-xs font-medium text-blue-600 uppercase tracking-wider mb-1">
@@ -253,7 +279,6 @@ export default function EditOrder() {
                     </div>
                   </div>
 
-                  {/* Right side - Customer ID */}
                   <div className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold inline-flex items-center gap-2 self-start">
                     <span>🆔</span>
                     {minimalCustomer.customerId || 'N/A'}
@@ -577,10 +602,22 @@ export default function EditOrder() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 rounded-xl font-black uppercase tracking-wider shadow-lg shadow-blue-500/30 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 mt-6"
+                disabled={isSubmitting}
+                className={`w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 rounded-xl font-black uppercase tracking-wider shadow-lg shadow-blue-500/30 transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 mt-6 ${
+                  isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                <Save size={18} />
-                Update Order
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Save size={18} />
+                    Update Order
+                  </>
+                )}
               </button>
 
               <button

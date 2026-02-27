@@ -32,6 +32,9 @@ import notificationRoutes from "./routes/notification.routes.js";
 import cuttingMasterRoutes from "./routes/cuttingMaster.routes.js";
 import storeKeeperRoutes from "./routes/storeKeeper.routes.js";
 
+// ✅ IMPORT ERROR HANDLING MIDDLEWARE
+import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
+
 // Load env variables
 dotenv.config();
 
@@ -43,7 +46,37 @@ connectDB();
 
 // ==================== MIDDLEWARE ====================
 
-// Security middleware
+// ✅ FIX: Move CORS to the TOP - before any other middleware
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:5000",
+  "https://dreamfit.vercel.app",
+];
+
+
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, postman)
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log("❌ Blocked by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    exposedHeaders: ["Content-Range", "X-Content-Range"],
+    maxAge: 600, // 10 minutes
+  })
+);
+
+// Security middleware (after CORS)
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: { policy: "unsafe-none" }
@@ -74,36 +107,6 @@ app.use("/api/", limiter);
 // Body parser
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// CORS configuration
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:5000",
-  "https://dreamfit.vercel.app", // Add your production frontend URL
-];
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, curl, postman)
-      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        console.log("❌ Blocked by CORS:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    exposedHeaders: ["Content-Range", "X-Content-Range"],
-    maxAge: 600, // 10 minutes
-  })
-);
-
-
 
 // Static files (if needed)
 app.use("/uploads", express.static("uploads"));
@@ -189,64 +192,14 @@ app.use("/api/cutting-masters", cuttingMasterRoutes);
 // ✅ NEW: STORE KEEPER ROUTES - Protected
 app.use("/api/store-keepers", storeKeeperRoutes);
 
-// ==================== 404 HANDLER ====================
-app.use((req, res) => {
-  res.status(404).json({ 
-    success: false,
-    message: "Route not found",
-    path: req.originalUrl,
-    method: req.method,
-    timestamp: new Date().toISOString()
-  });
-});
+// ==================== ERROR HANDLING MIDDLEWARE ====================
+// ⚠️ IMPORTANT: These must be LAST after all routes!
 
-// ==================== GLOBAL ERROR HANDLER ====================
-app.use((err, req, res, next) => {
-  console.error("❌ Server Error:", err);
-  
-  // Mongoose duplicate key error
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyPattern)[0];
-    return res.status(400).json({
-      success: false,
-      message: `${field} already exists. Please use a different value.`,
-      error: process.env.NODE_ENV === "development" ? err.message : undefined
-    });
-  }
-  
-  // Mongoose validation error
-  if (err.name === "ValidationError") {
-    const errors = Object.values(err.errors).map(e => e.message);
-    return res.status(400).json({
-      success: false,
-      message: "Validation failed",
-      errors: errors
-    });
-  }
-  
-  // JWT errors
-  if (err.name === "JsonWebTokenError") {
-    return res.status(401).json({
-      success: false,
-      message: "Invalid token. Please log in again."
-    });
-  }
-  
-  if (err.name === "TokenExpiredError") {
-    return res.status(401).json({
-      success: false,
-      message: "Token expired. Please log in again."
-    });
-  }
+// 404 Handler - Route not found
+app.use(notFound);
 
-  // Default error
-  res.status(err.status || 500).json({ 
-    success: false,
-    message: err.message || "Internal server error",
-    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
-    timestamp: new Date().toISOString()
-  });
-});
+// Global Error Handler - Catches all errors
+app.use(errorHandler);
 
 // ==================== UNHANDLED REJECTIONS ====================
 process.on("unhandledRejection", (err) => {

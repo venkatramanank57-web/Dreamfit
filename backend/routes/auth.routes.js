@@ -2,13 +2,13 @@
 import express from "express";
 import { loginUser } from "../controllers/auth.controller.js";
 
-console.log("📁 auth.routes.js is loading...");
-console.log("   loginUser:", loginUser ? "✅ Function" : "❌ Undefined");
-
 const router = express.Router();
 
+/**
+ * @route   POST /api/auth/login
+ * @desc    Login user (Admin, Cutting Master, Store Keeper, Tailor)
+ * @access  Public
+ */
 router.post("/login", loginUser);
-
-console.log("   router:", router ? "✅ Created" : "❌ Failed");
 
 export default router;

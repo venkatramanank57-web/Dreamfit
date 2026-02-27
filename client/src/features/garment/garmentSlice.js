@@ -99,6 +99,7 @@ const garmentSlice = createSlice({
     garments: [],
     currentGarment: null,
     loading: false,
+    imageLoading: false, // ✅ NEW: Specific loading for image uploads
     error: null,
   },
   reducers: {
@@ -144,16 +145,30 @@ const garmentSlice = createSlice({
       })
 
       // ===== CREATE GARMENT =====
+      .addCase(createGarment.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(createGarment.fulfilled, (state, action) => {
+        state.loading = false;
         const newGarment = action.payload.garment || action.payload;
         if (newGarment && newGarment._id) {
           state.garments = [newGarment, ...state.garments];
           console.log("✅ Garment created:", newGarment.name);
         }
       })
+      .addCase(createGarment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
       // ===== UPDATE GARMENT =====
+      .addCase(updateGarment.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateGarment.fulfilled, (state, action) => {
+        state.loading = false;
         const updatedGarment = action.payload.garment || action.payload;
         if (updatedGarment && updatedGarment._id) {
           const index = state.garments.findIndex(g => g._id === updatedGarment._id);
@@ -163,16 +178,90 @@ const garmentSlice = createSlice({
           if (state.currentGarment?._id === updatedGarment._id) {
             state.currentGarment = updatedGarment;
           }
+          console.log("✅ Garment updated:", updatedGarment.name);
         }
+      })
+      .addCase(updateGarment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // ===== UPDATE GARMENT IMAGES (With specific loading) =====
+      .addCase(updateGarmentImages.pending, (state) => {
+        state.imageLoading = true;
+        state.error = null;
+        console.log("📸 Image upload started...");
+      })
+      .addCase(updateGarmentImages.fulfilled, (state, action) => {
+        state.imageLoading = false;
+        const updatedGarment = action.payload.garment || action.payload;
+        
+        // Update in garments list
+        const index = state.garments.findIndex(g => g._id === updatedGarment._id);
+        if (index !== -1) {
+          state.garments[index] = updatedGarment;
+        }
+        
+        // Update current garment if it's the same one
+        if (state.currentGarment?._id === updatedGarment._id) {
+          state.currentGarment = updatedGarment;
+        }
+        
+        console.log("📸 Images updated in Redux:", {
+          designImages: updatedGarment.designImages?.length || 0,
+          workImages: updatedGarment.workImages?.length || 0
+        });
+      })
+      .addCase(updateGarmentImages.rejected, (state, action) => {
+        state.imageLoading = false;
+        state.error = action.payload;
+        console.error("❌ Image upload failed:", action.payload);
+      })
+
+      // ===== DELETE GARMENT IMAGE =====
+      .addCase(deleteGarmentImage.pending, (state) => {
+        state.imageLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteGarmentImage.fulfilled, (state, action) => {
+        state.imageLoading = false;
+        
+        // If API returns updated garment
+        if (action.payload.garment) {
+          const updatedGarment = action.payload.garment;
+          const index = state.garments.findIndex(g => g._id === updatedGarment._id);
+          if (index !== -1) {
+            state.garments[index] = updatedGarment;
+          }
+          if (state.currentGarment?._id === updatedGarment._id) {
+            state.currentGarment = updatedGarment;
+          }
+        }
+        
+        console.log("🗑️ Image removed successfully");
+      })
+      .addCase(deleteGarmentImage.rejected, (state, action) => {
+        state.imageLoading = false;
+        state.error = action.payload;
       })
 
       // ===== DELETE GARMENT =====
+      .addCase(deleteGarment.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(deleteGarment.fulfilled, (state, action) => {
+        state.loading = false;
         const deletedId = action.payload;
         state.garments = state.garments.filter(g => g._id !== deletedId);
         if (state.currentGarment?._id === deletedId) {
           state.currentGarment = null;
         }
+        console.log("✅ Garment deleted:", deletedId);
+      })
+      .addCase(deleteGarment.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });

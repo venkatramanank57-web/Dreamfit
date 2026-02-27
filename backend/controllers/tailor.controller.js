@@ -7,9 +7,13 @@ import bcrypt from "bcryptjs";
 // ===== CREATE TAILOR =====
 export const createTailor = async (req, res) => {
   try {
-    console.log("📝 Creating tailor with data:", req.body);
+    console.log("📝 Creating tailor with data:", {
+      ...req.body,
+      password: req.body.password ? '[PRESENT]' : '[MISSING]'
+    });
     
-    const { name, phone, email, address, specialization, experience } = req.body;
+    // ✅ FIX: Add password to destructuring
+    const { name, phone, email, password, address, specialization, experience } = req.body;
 
     // Validate required fields
     if (!name) {
@@ -17,6 +21,11 @@ export const createTailor = async (req, res) => {
     }
     if (!phone) {
       return res.status(400).json({ message: "Phone number is required" });
+    }
+    
+    // ✅ FIX: Validate password
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
     }
 
     // Check if phone already exists
@@ -33,27 +42,54 @@ export const createTailor = async (req, res) => {
       }
     }
 
-    // Create tailor - use create() which triggers pre-save hook
-    const tailor = await Tailor.create({
+    // Generate tailorId manually (since pre-save hook might not be running)
+    const date = new Date();
+    const year = date.getFullYear().toString().slice(-2);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const count = await Tailor.countDocuments();
+    const sequence = String(count + 1).padStart(4, '0');
+    const tailorId = `TLR${year}${month}${sequence}`;
+
+    // Create tailor with ALL fields
+    const tailor = new Tailor({
+      tailorId, // Set manually to ensure it's there
       name,
       phone,
       email: email || undefined,
+      password, // Use the password from request body
       address: address || {},
       specialization: specialization || [],
       experience: experience || 0,
       createdBy: req.user?._id,
-      joiningDate: new Date()
+      joiningDate: new Date(),
+      // Initialize other required fields
+      isActive: true,
+      isAvailable: true,
+      leaveStatus: "present",
+      workStats: {
+        totalAssigned: 0,
+        completed: 0,
+        pending: 0,
+        inProgress: 0
+      },
+      performance: {
+        rating: 0,
+        feedback: []
+      }
     });
 
+    console.log("💾 Saving tailor with ID:", tailorId);
+    
+    // Save to database
+    await tailor.save();
+    
     console.log("✅ Tailor created with ID:", tailor.tailorId);
 
-    // Create user account
+    // Create user account with the SAME password
     let user = null;
     try {
-      const bcrypt = require('bcryptjs');
-      const defaultPassword = "Welcome@123";
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(defaultPassword, salt);
+      const hashedPassword = await bcrypt.hash(password, salt); // Use the provided password
 
       user = await User.create({
         name,
@@ -67,11 +103,16 @@ export const createTailor = async (req, res) => {
       console.log("✅ User account created for tailor");
     } catch (userError) {
       console.log("⚠️ User account creation failed:", userError.message);
+      // Don't fail the whole request if user creation fails
     }
 
+    // Return success response (excluding password)
+    const tailorResponse = tailor.toObject();
+    delete tailorResponse.password;
+    
     res.status(201).json({
       message: "Tailor created successfully",
-      tailor,
+      tailor: tailorResponse,
       user: user ? {
         _id: user._id,
         name: user.name,

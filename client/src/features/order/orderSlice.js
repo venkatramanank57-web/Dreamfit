@@ -2,6 +2,21 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as orderApi from "./orderApi";
 
 // ===== ASYNC THUNKS =====
+
+// ✅ FETCH ORDER STATS
+export const fetchOrderStats = createAsyncThunk(
+  "order/fetchStats",
+  async (_, { rejectWithValue }) => {
+    try {
+      console.log("📊 Fetching order statistics...");
+      const response = await orderApi.getOrderStatsApi();
+      return response.stats;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to fetch stats");
+    }
+  }
+);
+
 export const fetchAllOrders = createAsyncThunk(
   "order/fetchAll",
   async (params, { rejectWithValue }) => {
@@ -41,6 +56,20 @@ export const createOrder = createAsyncThunk(
   }
 );
 
+// ✅ NEW: UPDATE ORDER (FULL UPDATE)
+export const updateOrder = createAsyncThunk(
+  "order/update",
+  async ({ id, orderData }, { rejectWithValue }) => {
+    try {
+      console.log(`📝 Updating order ${id}:`, orderData);
+      const response = await orderApi.updateOrderApi(id, orderData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Failed to update order");
+    }
+  }
+);
+
 export const updateOrderStatus = createAsyncThunk(
   "order/updateStatus",
   async ({ id, status }, { rejectWithValue }) => {
@@ -72,6 +101,13 @@ const orderSlice = createSlice({
   initialState: {
     orders: [],
     currentOrder: null,
+    stats: {
+      today: 0,
+      thisWeek: 0,
+      thisMonth: 0,
+      total: 0,
+      statusBreakdown: []
+    },
     pagination: {
       page: 1,
       limit: 10,
@@ -91,6 +127,21 @@ const orderSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // ===== FETCH ORDER STATS =====
+      .addCase(fetchOrderStats.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrderStats.fulfilled, (state, action) => {
+        state.loading = false;
+        state.stats = action.payload;
+        console.log("📊 Stats updated in store:", action.payload);
+      })
+      .addCase(fetchOrderStats.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       // ===== FETCH ALL ORDERS =====
       .addCase(fetchAllOrders.pending, (state) => {
         state.loading = true;
@@ -101,11 +152,6 @@ const orderSlice = createSlice({
         state.orders = action.payload.orders;
         state.pagination = action.payload.pagination;
         console.log("✅ Orders loaded:", action.payload.orders?.length);
-        
-        // Log customer data for debugging
-        if (action.payload.orders?.length > 0) {
-          console.log("👤 Sample customer:", action.payload.orders[0].customer);
-        }
       })
       .addCase(fetchAllOrders.rejected, (state, action) => {
         state.loading = false;
@@ -120,9 +166,8 @@ const orderSlice = createSlice({
       })
       .addCase(fetchOrderById.fulfilled, (state, action) => {
         state.loading = false;
-        state.currentOrder = action.payload;
-        console.log("✅ Order loaded:", action.payload?.orderId);
-        console.log("👤 Customer:", action.payload?.customer); // Debug log
+        state.currentOrder = action.payload.order || action.payload;
+        console.log("✅ Order loaded:", state.currentOrder?.orderId);
       })
       .addCase(fetchOrderById.rejected, (state, action) => {
         state.loading = false;
@@ -141,8 +186,15 @@ const orderSlice = createSlice({
         if (newOrder && newOrder._id) {
           state.orders = [newOrder, ...state.orders];
           state.pagination.total += 1;
+          
+          if (state.stats) {
+            state.stats.total += 1;
+            state.stats.today += 1;
+            state.stats.thisWeek += 1;
+            state.stats.thisMonth += 1;
+          }
+          
           console.log("✅ Order created:", newOrder.orderId);
-          console.log("👤 Customer:", newOrder.customer); // Debug log
         }
       })
       .addCase(createOrder.rejected, (state, action) => {
@@ -150,8 +202,41 @@ const orderSlice = createSlice({
         state.error = action.payload;
       })
 
+      // ===== UPDATE ORDER (FULL UPDATE) =====
+      .addCase(updateOrder.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateOrder.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedOrder = action.payload.order || action.payload;
+        if (updatedOrder && updatedOrder._id) {
+          // Update in orders list
+          const index = state.orders.findIndex(o => o._id === updatedOrder._id);
+          if (index !== -1) {
+            state.orders[index] = updatedOrder;
+          }
+          
+          // Update current order if it's the same one
+          if (state.currentOrder?._id === updatedOrder._id) {
+            state.currentOrder = updatedOrder;
+          }
+          
+          console.log("✅ Order updated:", updatedOrder.orderId);
+        }
+      })
+      .addCase(updateOrder.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       // ===== UPDATE ORDER STATUS =====
+      .addCase(updateOrderStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
+        state.loading = false;
         const updatedOrder = action.payload.order || action.payload;
         if (updatedOrder && updatedOrder._id) {
           const index = state.orders.findIndex(o => o._id === updatedOrder._id);
@@ -164,16 +249,34 @@ const orderSlice = createSlice({
           console.log("✅ Order status updated:", updatedOrder.status);
         }
       })
+      .addCase(updateOrderStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
 
       // ===== DELETE ORDER =====
+      .addCase(deleteOrder.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(deleteOrder.fulfilled, (state, action) => {
+        state.loading = false;
         const deletedId = action.payload;
         state.orders = state.orders.filter(o => o._id !== deletedId);
         if (state.currentOrder?._id === deletedId) {
           state.currentOrder = null;
         }
         state.pagination.total -= 1;
+        
+        if (state.stats && state.stats.total > 0) {
+          state.stats.total -= 1;
+        }
+        
         console.log("✅ Order deleted:", deletedId);
+      })
+      .addCase(deleteOrder.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });

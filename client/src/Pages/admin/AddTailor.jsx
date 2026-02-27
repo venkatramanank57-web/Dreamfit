@@ -12,6 +12,7 @@ import {
   Calendar,
   Plus,
   X,
+  Lock,
 } from "lucide-react";
 import { createTailor } from "../../features/tailor/tailorSlice";
 import showToast from "../../utils/toast";
@@ -20,10 +21,12 @@ export default function AddTailor() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
+  // Add password to initial state
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     email: "",
+    password: "", // Add password field
     address: {
       street: "",
       city: "",
@@ -58,6 +61,17 @@ export default function AddTailor() {
     }
   };
 
+  // Function to generate a random password
+  const generateRandomPassword = () => {
+    const length = 10;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
+  };
+
   const handleAddSpecialization = () => {
     if (specializationInput.trim() && !formData.specialization.includes(specializationInput.trim())) {
       setFormData(prev => ({
@@ -78,6 +92,12 @@ export default function AddTailor() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // DEBUG: Log form data before any processing
+    console.log("🔍 STEP 1 - Raw formData:", {
+      ...formData,
+      password: formData.password ? "[PRESENT - " + formData.password.length + " chars]" : "[EMPTY]"
+    });
+
     // Validation
     if (!formData.name) {
       showToast.error("Please enter tailor name");
@@ -94,18 +114,134 @@ export default function AddTailor() {
       return;
     }
 
+    // Generate password if not provided
+    const password = formData.password || generateRandomPassword();
+    
+    // DEBUG: Check password generation
+    console.log("🔍 STEP 2 - Password handling:", {
+      originalPassword: formData.password ? "[PROVIDED]" : "[NOT PROVIDED]",
+      generatedPassword: !formData.password ? "[GENERATED - " + password.length + " chars]" : "[NOT GENERATED]",
+      finalPassword: password ? "[SET - " + password.length + " chars]" : "[MISSING - PROBLEM!]"
+    });
+
+    // Prepare data for API - METHOD 1: Using spread
+    const tailorDataMethod1 = {
+      ...formData,
+      password: password,
+      experience: formData.experience ? parseInt(formData.experience) : 0,
+    };
+    
+    // DEBUG: Check if password survived the spread
+    console.log("🔍 STEP 3A - After spread operation:", {
+      passwordInMethod1: tailorDataMethod1.password ? "[PRESENT]" : "[MISSING - CRITICAL ERROR!]",
+      passwordValue: tailorDataMethod1.password ? tailorDataMethod1.password.substring(0, 3) + "..." : "null",
+      fullDataMethod1: {
+        ...tailorDataMethod1,
+        password: tailorDataMethod1.password ? "[HIDDEN]" : null
+      }
+    });
+
+    // METHOD 2: Explicit object creation (more reliable)
+    const tailorDataMethod2 = {
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email || "",
+      password: password, // Explicitly set
+      experience: formData.experience ? parseInt(formData.experience) : 0,
+      specialization: formData.specialization || [],
+      address: {
+        street: formData.address.street || "",
+        city: formData.address.city || "",
+        state: formData.address.state || "",
+        pincode: formData.address.pincode || ""
+      }
+    };
+
+    // DEBUG: Compare both methods
+    console.log("🔍 STEP 3B - Method 2 (explicit object):", {
+      passwordInMethod2: tailorDataMethod2.password ? "[PRESENT]" : "[MISSING - CRITICAL ERROR!]",
+      passwordValue: tailorDataMethod2.password ? tailorDataMethod2.password.substring(0, 3) + "..." : "null",
+      fullDataMethod2: {
+        ...tailorDataMethod2,
+        password: tailorDataMethod2.password ? "[HIDDEN]" : null
+      }
+    });
+
+    // Choose which method to use (let's use Method 2 to be safe)
+    const tailorData = tailorDataMethod2;
+
+    // FINAL DEBUG: Log the complete data being sent to dispatch
+    console.log("🔍 STEP 4 - FINAL data being sent to Redux:", {
+      data: {
+        ...tailorData,
+        password: tailorData.password ? "[PRESENT - " + tailorData.password.length + " chars]" : "[MISSING - THIS IS THE PROBLEM!]"
+      },
+      passwordLength: tailorData.password ? tailorData.password.length : 0,
+      timestamp: new Date().toISOString()
+    });
+
+    // Add a check before dispatching
+    if (!tailorData.password) {
+      console.error("❌ CRITICAL: Password is missing right before dispatch!");
+      showToast.error("Password generation failed. Please try again.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await dispatch(createTailor(formData)).unwrap();
-      showToast.success("Tailor created successfully! 🎉");
+      // DEBUG: Log before dispatch
+      console.log("🔍 STEP 5 - About to dispatch createTailor with password:", 
+        tailorData.password ? "[PRESENT]" : "[MISSING]");
+      
+      const result = await dispatch(createTailor(tailorData)).unwrap();
+      
+      console.log("✅ STEP 6 - Dispatch successful:", result);
+      
+      // Show success message with password if it was auto-generated
+      if (!formData.password) {
+        showToast.success(`Tailor created successfully! Password: ${password}`, {
+          duration: 10000, // Show for 10 seconds so admin can note it down
+        });
+      } else {
+        showToast.success("Tailor created successfully! 🎉");
+      }
+      
       navigate("/admin/tailors");
     } catch (error) {
-      showToast.error(error || "Failed to create tailor");
+      console.error("❌ STEP 6 - Creation error:", error);
+      
+      // Enhanced error logging
+      if (error.response) {
+        console.error("Server response data:", error.response.data);
+        console.error("Server response status:", error.response.status);
+        console.error("Server response headers:", error.response.headers);
+        
+        // Show specific error message
+        if (error.response.data.message) {
+          showToast.error(error.response.data.message);
+        } else if (error.response.data.errors) {
+          showToast.error(error.response.data.errors.join(', '));
+        } else {
+          showToast.error("Failed to create tailor");
+        }
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+        showToast.error("No response from server");
+      } else {
+        console.error("Error message:", error.message);
+        showToast.error(error.message || "Failed to create tailor");
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // Add a debug effect to monitor formData changes
+  React.useEffect(() => {
+    console.log("📊 FormData updated - Password present:", 
+      formData.password ? "✅ Yes" : "❌ No");
+  }, [formData]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 p-6">
@@ -183,6 +319,24 @@ export default function AddTailor() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="tailor@example.com"
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-black uppercase text-slate-500 mb-2">
+                  Password <span className="text-slate-400">(Leave empty to auto-generate)</span>
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Enter password or leave empty"
                     className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   />
                 </div>

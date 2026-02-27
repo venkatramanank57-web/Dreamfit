@@ -39,6 +39,7 @@ import OrderDetails from "../Pages/admin/OrderDetails";
 import WorkPage from "../Pages/admin/WorkPage";
 import GarmentDetails from "../Pages/admin/GarmentDetails";
 import EditOrder from "../Pages/admin/EditOrder";
+import EditGarment from "../Pages/admin/garment/EditGarment"; 
 
 // ✅ TAILOR MANAGEMENT COMPONENTS
 import Tailors from "../Pages/admin/Tailors";
@@ -185,12 +186,13 @@ export default function AppRouter() {
           <Route path="orders/:id" element={<OrderDetails />} />
           <Route path="orders/edit/:id" element={<EditOrder />} />
           
+          {/* Garment Management - ✅ ADD EDIT GARMENT ROUTE HERE */}
+          <Route path="garments/:id" element={<GarmentDetails />} />
+          <Route path="garments/edit/:id" element={<EditGarment />} /> {/* ✅ NEW ROUTE */}
+          
           {/* Work Management */}
           <Route path="works" element={<WorkPage />} />
           <Route path="works/:id" element={<WorkPage />} />
-          
-          {/* Garment Details */}
-          <Route path="garments/:id" element={<GarmentDetails />} />
           
           {/* Tailors Management */}
           <Route path="tailors" element={<Tailors />} />
@@ -278,12 +280,13 @@ export default function AppRouter() {
           <Route path="orders/:id" element={<OrderDetails />} />
           <Route path="orders/edit/:id" element={<EditOrder />} />
           
+          {/* Garment Management - ✅ ADD EDIT GARMENT ROUTE HERE FOR STORE KEEPER */}
+          <Route path="garments/:id" element={<GarmentDetails />} />
+          <Route path="garments/edit/:id" element={<EditGarment />} /> {/* ✅ NEW ROUTE */}
+          
           {/* Work Management - Store Keeper can view all works */}
           <Route path="works" element={<WorkPage />} />
           <Route path="works/:id" element={<WorkPage />} />
-          
-          {/* Garment Details */}
-          <Route path="garments/:id" element={<GarmentDetails />} />
           
           {/* Tailors Management - Store Keeper can view and add tailors */}
           <Route path="tailors" element={<Tailors />} />
@@ -344,12 +347,13 @@ export default function AppRouter() {
           <Route path="orders" element={<Orders />} />
           <Route path="orders/:id" element={<OrderDetails />} />
           
+          {/* Garment Details - Cutting Master can view garment details but NOT edit */}
+          <Route path="garments/:id" element={<GarmentDetails />} />
+          {/* ❌ NO EDIT GARMENT ROUTE FOR CUTTING MASTER */}
+          
           {/* Work Management - Cutting Master can see and update their work */}
           <Route path="works" element={<WorkPage />} />
           <Route path="works/:id" element={<WorkPage />} />
-          
-          {/* Garment Details - Cutting Master can view garment details */}
-          <Route path="garments/:id" element={<GarmentDetails />} />
           
           {/* Tailors - Cutting Master can view tailors and update leave status */}
           <Route path="tailors" element={<Tailors />} />

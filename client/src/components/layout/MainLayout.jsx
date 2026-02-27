@@ -188,15 +188,6 @@ export default function MainLayout() {
         description: 'Customer management'
       },
       
-      // Shop Keeper - Admin and Store Keeper
-      { 
-        id: 'shopkeeper', 
-        icon: Store, 
-        label: 'Shop Keeper', 
-        path: `/${rolePath}/shopkeeper`, 
-        show: canViewShopKeeper,
-        description: 'Shop operations'
-      },
       
       // Banking - Admin and Store Keeper both can see (Dropdown)
       { 

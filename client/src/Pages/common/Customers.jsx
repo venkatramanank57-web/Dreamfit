@@ -119,7 +119,7 @@ export default function Customers() {
 
   // Navigate to create order
   const goToCreateOrder = (customer) => {
-    navigate(`/${rolePath}/create-order`, { state: { customer } });
+    navigate(`/${rolePath}/orders/new`, { state: { customer } });
   };
 
   return (

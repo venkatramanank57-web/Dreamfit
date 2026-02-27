@@ -12,7 +12,12 @@ import {
 import { protect, authorize } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+
+// ✅ Multer Memory Storage (Required for R2/S3 upload buffer)
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 // Debug middleware
 router.use((req, res, next) => {
@@ -25,69 +30,64 @@ router.use(protect);
 
 /**
  * @route   POST /api/garments/order/:orderId
- * @desc    Create new garment with images for a specific order
+ * @desc    Create garment with 3-type image support
  * @access  Admin, Store Keeper
  */
 router.post(
   "/order/:orderId",
   authorize("ADMIN", "STORE_KEEPER"),
   upload.fields([
-    { name: "referenceImages", maxCount: 10 },      // Studio/designer images
-    { name: "customerImages", maxCount: 10 },       // Customer digital images
-    { name: "customerClothImages", maxCount: 10 },  // NEW: Customer physical cloth images
+    { name: "referenceImages", maxCount: 5 },      // Studio refs
+    { name: "customerImages", maxCount: 5 },       // Digital refs
+    { name: "customerClothImages", maxCount: 5 },  // Physical cloth photos
   ]),
   createGarment
 );
 
 /**
  * @route   GET /api/garments/order/:orderId
- * @desc    Get all garments for a specific order
- * @access  Admin, Store Keeper, Cutting Master
+ * @desc    Get all garments for an order (Cutting Master needs this)
  */
 router.get("/order/:orderId", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER"), getGarmentsByOrder);
 
 /**
  * @route   GET /api/garments/:id
- * @desc    Get garment by ID
- * @access  Admin, Store Keeper, Cutting Master
+ * @desc    Get detailed garment info including measurements
  */
 router.get("/:id", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER"), getGarmentById);
 
 /**
  * @route   PUT /api/garments/:id
- * @desc    Update garment (without images)
- * @access  Admin, Store Keeper
+ * @desc    Update text data (name, priority, price)
  */
 router.put("/:id", authorize("ADMIN", "STORE_KEEPER"), updateGarment);
 
 /**
  * @route   PATCH /api/garments/:id/images
- * @desc    Update garment images
- * @access  Admin, Store Keeper
+ * @desc    Add new images to existing garment
  */
 router.patch(
   "/:id/images",
   authorize("ADMIN", "STORE_KEEPER"),
   upload.fields([
-    { name: "referenceImages", maxCount: 10 },      // Studio/designer images
-    { name: "customerImages", maxCount: 10 },       // Customer digital images
-    { name: "customerClothImages", maxCount: 10 },  // NEW: Customer physical cloth images
+    { name: "referenceImages", maxCount: 5 },
+    { name: "customerImages", maxCount: 5 },
+    { name: "customerClothImages", maxCount: 5 },
   ]),
   updateGarmentImages
 );
 
 /**
  * @route   DELETE /api/garments/:id/images
- * @desc    Delete a specific image from garment
- * @access  Admin, Store Keeper
+ * @desc    Delete specific image from R2 and DB
  */
 router.delete("/:id/images", authorize("ADMIN", "STORE_KEEPER"), deleteGarmentImage);
 
 /**
  * @route   DELETE /api/garments/:id
- * @desc    Delete garment (soft delete)
- * @access  Admin, Store Keeper
+ * @desc    Soft delete garment
+ * @access  Admin (Restricted to Admin for safety)
  */
-router.delete("/:id", authorize("ADMIN", "STORE_KEEPER"), deleteGarment);
+router.delete("/:id", authorize("ADMIN"), deleteGarment);
 
 export default router;

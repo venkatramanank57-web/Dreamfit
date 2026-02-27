@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import {
@@ -37,6 +37,7 @@ export default function NewOrder() {
     return () => logDebug('Component unmounted');
   }, []);
 
+  // Get customers from Redux
   const { customers, loading: customersLoading } = useSelector((state) => ({
     customers: state.customer?.customers || [],
     loading: state.customer?.loading || false
@@ -44,7 +45,8 @@ export default function NewOrder() {
 
   // Get current user from auth state
   const { user } = useSelector((state) => {
-    console.log('👤 User from Redux:', state.auth?.user);
+    console.log('👤 Full auth state:', state.auth);
+    console.log('👤 User object from Redux:', state.auth?.user);
     return { user: state.auth?.user };
   });
   
@@ -66,9 +68,20 @@ export default function NewOrder() {
   const [selectedCustomerDisplay, setSelectedCustomerDisplay] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get user ID - properly format for MongoDB
+  // Get user ID directly from user.id
   const userId = user?.id;
   const userRole = user?.role;
+
+  // Enhanced user debugging
+  useEffect(() => {
+    console.log("👤 USER DEBUG:", {
+      userExists: !!user,
+      userObject: user,
+      userId,
+      userRole,
+      allKeys: user ? Object.keys(user) : []
+    });
+  }, [user, userId, userRole]);
 
   logDebug('User authentication', { 
     userExists: !!user, 
@@ -91,7 +104,7 @@ export default function NewOrder() {
       });
   }, [dispatch]);
 
-  // Function to get customer full name from firstName and lastName
+  // Function to get customer full name
   const getCustomerFullName = (customer) => {
     if (!customer) return 'Unknown Customer';
     
@@ -196,23 +209,86 @@ export default function NewOrder() {
     }
   }, [garments]);
 
+  // ✅ FIXED: Handle FormData from GarmentForm
   const handleSaveGarment = useCallback((garmentData) => {
-    if (editingGarment !== null) {
-      const index = garments.findIndex(g => g.tempId === editingGarment.tempId);
-      if (index !== -1) {
-        const newGarments = [...garments];
-        newGarments[index] = { ...garmentData, tempId: editingGarment.tempId };
-        setGarments(newGarments);
-        showToast.success("Garment updated");
+    console.log("📦 Received garment data:", garmentData);
+    
+    // Check if it's FormData (for new/edited garments with images)
+    if (garmentData instanceof FormData) {
+      // Convert FormData to object for storage
+      const garmentObj = {
+        tempId: editingGarment?.tempId || Date.now() + Math.random(),
+        referenceImages: [],
+        customerImages: [],
+        customerClothImages: []
+      };
+      
+      // Parse FormData
+      for (let [key, value] of garmentData.entries()) {
+        if (value instanceof File) {
+          // Store files in appropriate arrays
+          if (key === 'referenceImages') {
+            garmentObj.referenceImages.push(value);
+          } else if (key === 'customerImages') {
+            garmentObj.customerImages.push(value);
+          } else if (key === 'customerClothImages') {
+            garmentObj.customerClothImages.push(value);
+          }
+        } else {
+          // Parse JSON fields
+          if (key === 'measurements' || key === 'priceRange') {
+            try {
+              garmentObj[key] = JSON.parse(value);
+            } catch {
+              garmentObj[key] = value;
+            }
+          } else {
+            garmentObj[key] = value;
+          }
+        }
+      }
+      
+      console.log("📦 Converted garment object:", {
+        name: garmentObj.name,
+        referenceImages: garmentObj.referenceImages?.length || 0,
+        customerImages: garmentObj.customerImages?.length || 0,
+        customerClothImages: garmentObj.customerClothImages?.length || 0
+      });
+      
+      if (editingGarment !== null) {
+        // Update existing garment
+        const index = garments.findIndex(g => g.tempId === editingGarment.tempId);
+        if (index !== -1) {
+          const newGarments = [...garments];
+          newGarments[index] = garmentObj;
+          setGarments(newGarments);
+          showToast.success("Garment updated");
+        }
+      } else {
+        // Add new garment
+        setGarments([...garments, garmentObj]);
+        showToast.success("Garment added");
       }
     } else {
-      const newGarment = {
-        ...garmentData,
-        tempId: Date.now() + Math.random(),
-      };
-      setGarments([...garments, newGarment]);
-      showToast.success("Garment added");
+      // Old method (plain object) - for backward compatibility
+      if (editingGarment !== null) {
+        const index = garments.findIndex(g => g.tempId === editingGarment.tempId);
+        if (index !== -1) {
+          const newGarments = [...garments];
+          newGarments[index] = { ...garmentData, tempId: editingGarment.tempId };
+          setGarments(newGarments);
+          showToast.success("Garment updated");
+        }
+      } else {
+        const newGarment = {
+          ...garmentData,
+          tempId: Date.now() + Math.random(),
+        };
+        setGarments([...garments, newGarment]);
+        showToast.success("Garment added");
+      }
     }
+    
     setShowGarmentModal(false);
   }, [garments, editingGarment]);
 
@@ -273,10 +349,20 @@ export default function NewOrder() {
       return;
     }
 
-    if (!userId) {
-      logDebug('User not authenticated - no id found', { user });
+    const finalUserId = user?.id;
+
+    if (!finalUserId) {
+      console.error("❌ No user ID found. User object:", user);
       showToast.error("You must be logged in to create an order. Please log in and try again.");
       return;
+    }
+
+    console.log("✅ Using User ID for createdBy:", finalUserId);
+
+    // Validate MongoDB ID format
+    const isValidMongoId = /^[0-9a-fA-F]{24}$/.test(finalUserId);
+    if (!isValidMongoId) {
+      console.warn("⚠️ User ID may not be a valid MongoDB ID:", finalUserId);
     }
 
     for (const [index, garment] of garments.entries()) {
@@ -289,12 +375,7 @@ export default function NewOrder() {
     setIsSubmitting(true);
 
     try {
-      const createdById = userId;
-      
-      if (!createdById) {
-        throw new Error("User ID is missing. Please log in again.");
-      }
-
+      // Prepare order data
       const orderData = {
         customer: formData.customer,
         deliveryDate: formData.deliveryDate,
@@ -309,29 +390,37 @@ export default function NewOrder() {
           totalMax: Number(priceSummary.totalMax),
         },
         balanceAmount: Number(balanceAmount.min),
-        createdBy: createdById,
+        createdBy: finalUserId,
         status: "draft",
         orderDate: new Date().toISOString(),
         garments: [],
       };
 
-      console.log("🔍 FINAL CHECK - createdBy:", orderData.createdBy);
-      
+      // CRITICAL: Validate createdBy before sending
       if (!orderData.createdBy) {
         throw new Error("createdBy is undefined in final order data!");
       }
 
-      console.log("📦 FINAL ORDER DATA BEING SENT:", JSON.stringify(orderData, null, 2));
+      console.log("========== FINAL ORDER DATA ==========");
+      console.log("📦 createdBy value:", orderData.createdBy);
+      console.log("📦 createdBy length:", orderData.createdBy.length);
+      console.log("📦 createdBy type:", typeof orderData.createdBy);
+      console.log("📦 createdBy valid MongoDB ID:", /^[0-9a-fA-F]{24}$/.test(orderData.createdBy));
+      console.log("📦 Full order data:", JSON.stringify(orderData, null, 2));
+      console.log("======================================");
 
       const result = await dispatch(createOrder(orderData)).unwrap();
       logDebug('Order created successfully', result);
       
       const orderId = result.order?._id || result._id;
 
+      // Create garments with images
       for (const garment of garments) {
         logDebug(`Creating garment`, garment);
         
         const garmentFormData = new FormData();
+        
+        // Add text fields
         garmentFormData.append("name", garment.name);
         garmentFormData.append("category", garment.category);
         garmentFormData.append("item", garment.item);
@@ -349,18 +438,51 @@ export default function NewOrder() {
         garmentFormData.append("priceRange", JSON.stringify(priceRange));
         
         garmentFormData.append("orderId", orderId);
-        garmentFormData.append("createdBy", createdById);
+        garmentFormData.append("createdBy", finalUserId);
 
+        // ✅ Add images with correct field names
         if (garment.referenceImages && garment.referenceImages.length > 0) {
+          console.log(`📸 Adding ${garment.referenceImages.length} reference images`);
           for (const img of garment.referenceImages) {
-            garmentFormData.append("referenceImages", img);
+            if (img instanceof File) {
+              garmentFormData.append("referenceImages", img);
+              console.log(`   ✅ Added: ${img.name}`);
+            }
           }
         }
+        
         if (garment.customerImages && garment.customerImages.length > 0) {
+          console.log(`📸 Adding ${garment.customerImages.length} customer images`);
           for (const img of garment.customerImages) {
-            garmentFormData.append("customerImages", img);
+            if (img instanceof File) {
+              garmentFormData.append("customerImages", img);
+              console.log(`   ✅ Added: ${img.name}`);
+            }
           }
         }
+        
+        if (garment.customerClothImages && garment.customerClothImages.length > 0) {
+          console.log(`📸 Adding ${garment.customerClothImages.length} cloth images`);
+          for (const img of garment.customerClothImages) {
+            if (img instanceof File) {
+              garmentFormData.append("customerClothImages", img);
+              console.log(`   ✅ Added: ${img.name}`);
+            }
+          }
+        }
+
+        // Debug log FormData
+        console.log("🔍 Garment FormData contents:");
+        let imageCount = 0;
+        for (let [key, value] of garmentFormData.entries()) {
+          if (value instanceof File) {
+            imageCount++;
+            console.log(`   📸 ${key}: ${value.name} (${value.size} bytes)`);
+          } else {
+            console.log(`   📝 ${key}: ${value.substring?.(0, 50) || value}`);
+          }
+        }
+        console.log(`📊 Total images in this garment: ${imageCount}`);
 
         await dispatch(createGarment({ orderId, garmentData: garmentFormData })).unwrap();
       }
@@ -371,23 +493,17 @@ export default function NewOrder() {
       console.error('❌ Full error:', error);
       console.error('❌ Error response:', error.response?.data);
       
-      logDebug('Order creation error', { 
-        message: error.message,
-        response: error.response?.data
-      });
+      const errorMessage = typeof error === 'string' 
+        ? error 
+        : (error.response?.data?.message || error.message || "Failed to create order");
       
-      if (error.response?.data?.message) {
-        showToast.error(error.response.data.message);
-      } else if (error.message) {
-        showToast.error(error.message);
-      } else {
-        showToast.error("Failed to create order");
-      }
+      showToast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Debug Panel
   const DebugPanel = () => {
     if (!DEBUG || process.env.NODE_ENV !== 'development') return null;
     
@@ -407,11 +523,21 @@ export default function NewOrder() {
           <div>Customer Display: {selectedCustomerDisplay || 'None'}</div>
           <div>Search Term: "{searchTerm}"</div>
           <div>Garments: {garments.length}</div>
+          <div>Garments with Images: {
+            garments.filter(g => 
+              (g.referenceImages?.length > 0) || 
+              (g.customerImages?.length > 0) || 
+              (g.customerClothImages?.length > 0)
+            ).length
+          }</div>
           <div>Delivery Date: {formData.deliveryDate || 'Not set'}</div>
           <div>Customers Loaded: {customers?.length || 0}</div>
           <div>Filtered Customers: {filteredCustomers.length}</div>
+          <div className="text-yellow-400 font-bold">
+            User Object: {user ? JSON.stringify(user).substring(0, 100) + '...' : '❌ No user'}
+          </div>
           <div className="text-green-400 font-bold">
-            User ID: {userId || '❌ Not found'}
+            User ID: {userId || '❌ Not found'} {userId && ( /^[0-9a-fA-F]{24}$/.test(userId) ? '✅ Valid' : '⚠️ Invalid format' )}
           </div>
           <div>User Role: {userRole || 'N/A'}</div>
           <div>Price Summary: Min ₹{priceSummary.totalMin} - Max ₹{priceSummary.totalMax}</div>
@@ -521,7 +647,7 @@ export default function NewOrder() {
               )}
             </div>
 
-            {/* Special Notes - Moved above Delivery Date */}
+            {/* Special Notes */}
             <div className="mt-4">
               <label className="block text-xs font-black uppercase text-slate-500 mb-2">
                 Special Notes
@@ -583,6 +709,15 @@ export default function NewOrder() {
                           }`}>
                             {garment.priority}
                           </span>
+                          {(garment.referenceImages?.length > 0 || 
+                            garment.customerImages?.length > 0 || 
+                            garment.customerClothImages?.length > 0) && (
+                            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-600 rounded-full">
+                              📸 {garment.referenceImages?.length || 0}/
+                              {garment.customerImages?.length || 0}/
+                              {garment.customerClothImages?.length || 0}
+                            </span>
+                          )}
                         </div>
                         
                         <div className="grid grid-cols-3 gap-4 mt-2 text-sm">
@@ -636,7 +771,7 @@ export default function NewOrder() {
             )}
           </div>
 
-          {/* Delivery Date - NOW MOVED BELOW GARMENTS SECTION */}
+          {/* Delivery Date */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
             <h2 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
               <Calendar size={20} className="text-blue-600" />

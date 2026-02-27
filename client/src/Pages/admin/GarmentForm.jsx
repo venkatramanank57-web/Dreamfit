@@ -35,9 +35,9 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
     measurementTemplate: "",
     measurementSource: "template",
     measurements: [],
-    studioImages: [], // Designer/studio reference images
-    customerProvidedImages: [], // Images sent by customer via WhatsApp/email
-    customerClothImages: [], // NEW: Photos of physical cloth given by customer
+    studioImages: [], // Will be sent as "referenceImages"
+    customerProvidedImages: [], // Will be sent as "customerImages"
+    customerClothImages: [], // Will be sent as "customerClothImages"
     additionalInfo: "",
     estimatedDelivery: "",
     priority: "normal",
@@ -52,7 +52,7 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
   const [previewImages, setPreviewImages] = useState({
     studio: [],
     customerProvided: [],
-    customerCloth: [], // NEW: Preview for customer cloth images
+    customerCloth: [],
   });
   const [loading, setLoading] = useState(false);
 
@@ -108,9 +108,9 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
         measurementTemplate: editingGarment.measurementTemplate?._id || editingGarment.measurementTemplate || "",
         measurementSource: editingGarment.measurementSource || "template",
         measurements: editingGarment.measurements || [],
-        studioImages: editingGarment.studioImages || editingGarment.referenceImages || [],
-        customerProvidedImages: editingGarment.customerProvidedImages || editingGarment.customerImages || [],
-        customerClothImages: editingGarment.customerClothImages || [], // NEW
+        studioImages: editingGarment.referenceImages || [], // ✅ FIX: Use referenceImages from backend
+        customerProvidedImages: editingGarment.customerImages || [], // ✅ FIX: Use customerImages from backend
+        customerClothImages: editingGarment.customerClothImages || [],
         additionalInfo: editingGarment.additionalInfo || "",
         estimatedDelivery: editingGarment.estimatedDelivery?.split("T")[0] || "",
         priority: editingGarment.priority || "normal",
@@ -118,25 +118,34 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       });
 
       // Set preview for existing images
-      const studioPreviews = (editingGarment.studioImages || editingGarment.referenceImages || []).map(img => ({
+      const studioPreviews = (editingGarment.referenceImages || []).map(img => ({
         preview: img.url || img,
         file: null,
+        isExisting: true,
+        url: img.url,
+        key: img.key
       }));
       
-      const customerPreviews = (editingGarment.customerProvidedImages || editingGarment.customerImages || []).map(img => ({
+      const customerPreviews = (editingGarment.customerImages || []).map(img => ({
         preview: img.url || img,
         file: null,
+        isExisting: true,
+        url: img.url,
+        key: img.key
       }));
 
       const clothPreviews = (editingGarment.customerClothImages || []).map(img => ({
         preview: img.url || img,
         file: null,
+        isExisting: true,
+        url: img.url,
+        key: img.key
       }));
 
       setPreviewImages({
         studio: studioPreviews,
         customerProvided: customerPreviews,
-        customerCloth: clothPreviews, // NEW
+        customerCloth: clothPreviews,
       });
 
       // Set selected fields for measurements
@@ -177,10 +186,14 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       return;
     }
 
-    // Create preview URLs
+    // Create preview URLs and store actual File objects
     const newPreviews = files.map(file => ({
-      file,
+      file, // Store the actual File object
       preview: URL.createObjectURL(file),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      isExisting: false,
     }));
 
     setPreviewImages(prev => ({
@@ -188,7 +201,7 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       [type]: [...prev[type], ...newPreviews],
     }));
 
-    // Store actual files
+    // Store actual files in formData
     let imageField;
     switch(type) {
       case "studio":
@@ -210,9 +223,11 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       ...prev,
       [imageField]: [
         ...existingFiles,
-        ...files,
+        ...files, // Store the actual File objects
       ],
     }));
+
+    console.log(`✅ Added ${files.length} images to ${imageField}`);
   };
 
   const removeImage = (index, type) => {
@@ -246,6 +261,8 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       ...prev,
       [imageField]: prev[imageField].filter((_, i) => i !== index),
     }));
+
+    console.log(`🗑️ Removed image from ${imageField}`);
   };
 
   const handleMeasurementToggle = (field) => {
@@ -288,79 +305,140 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     // Validation
     if (!formData.name) {
       showToast.error("Garment name is required");
+      setLoading(false);
       return;
     }
 
     if (!formData.category) {
       showToast.error("Please select a category");
+      setLoading(false);
       return;
     }
 
     if (!formData.item) {
       showToast.error("Please select an item");
+      setLoading(false);
       return;
     }
 
     if (!formData.estimatedDelivery) {
       showToast.error("Please select estimated delivery date");
+      setLoading(false);
       return;
     }
 
     if (!formData.priceRange.min || !formData.priceRange.max) {
       showToast.error("Please enter price range");
+      setLoading(false);
       return;
     }
 
     if (parseInt(formData.priceRange.min) > parseInt(formData.priceRange.max)) {
       showToast.error("Minimum price cannot be greater than maximum price");
+      setLoading(false);
       return;
     }
 
     // Validate measurements based on source
     if (formData.measurementSource === "template" && formData.measurements.length === 0) {
       showToast.error("Please select at least one measurement");
+      setLoading(false);
       return;
     }
 
-    // Prepare final data
-    let finalMeasurements = formData.measurements;
-    if (formData.measurementSource === "customer") {
-      finalMeasurements = Object.entries(manualMeasurements)
-        .filter(([_, value]) => value)
-        .map(([name, value]) => ({
-          name,
-          value: parseFloat(value),
-          unit: "inches",
-        }));
+    try {
+      // Prepare final measurements
+      let finalMeasurements = formData.measurements;
+      if (formData.measurementSource === "customer") {
+        finalMeasurements = Object.entries(manualMeasurements)
+          .filter(([_, value]) => value)
+          .map(([name, value]) => ({
+            name,
+            value: parseFloat(value),
+            unit: "inches",
+          }));
+      }
+
+      // ✅ CREATE FORM DATA FOR FILE UPLOAD
+      const formDataToSend = new FormData();
+
+      // Add text fields
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("category", formData.category);
+      formDataToSend.append("item", formData.item);
+      formDataToSend.append("measurementTemplate", formData.measurementTemplate || "");
+      formDataToSend.append("measurementSource", formData.measurementSource);
+      formDataToSend.append("measurements", JSON.stringify(finalMeasurements));
+      formDataToSend.append("additionalInfo", formData.additionalInfo || "");
+      formDataToSend.append("estimatedDelivery", formData.estimatedDelivery);
+      formDataToSend.append("priority", formData.priority);
+      
+      // Add price range as JSON string
+      formDataToSend.append("priceRange", JSON.stringify(formData.priceRange));
+
+      // ✅ ADD STUDIO IMAGES AS "referenceImages" (matches backend)
+      if (formData.studioImages && formData.studioImages.length > 0) {
+        for (const file of formData.studioImages) {
+          if (file instanceof File) {
+            formDataToSend.append("referenceImages", file);
+            console.log("📸 Added reference image:", file.name);
+          }
+        }
+      }
+
+      // ✅ ADD CUSTOMER DIGITAL IMAGES AS "customerImages" (matches backend)
+      if (formData.customerProvidedImages && formData.customerProvidedImages.length > 0) {
+        for (const file of formData.customerProvidedImages) {
+          if (file instanceof File) {
+            formDataToSend.append("customerImages", file);
+            console.log("📸 Added customer image:", file.name);
+          }
+        }
+      }
+
+      // ✅ ADD CUSTOMER CLOTH IMAGES AS "customerClothImages" (matches backend)
+      if (formData.customerClothImages && formData.customerClothImages.length > 0) {
+        for (const file of formData.customerClothImages) {
+          if (file instanceof File) {
+            formDataToSend.append("customerClothImages", file);
+            console.log("📸 Added cloth image:", file.name);
+          }
+        }
+      }
+
+      // ✅ DEBUG: Log all FormData entries
+      console.log("🔍 FormData contents:");
+      for (let [key, value] of formDataToSend.entries()) {
+        if (value instanceof File) {
+          console.log(`   📸 ${key}: File - ${value.name} (${value.size} bytes)`);
+        } else {
+          console.log(`   📝 ${key}: ${value}`);
+        }
+      }
+
+      // Clean up blob URLs
+      Object.values(previewImages).flat().forEach(img => {
+        if (img.preview && img.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(img.preview);
+        }
+      });
+
+      // ✅ Call onSave with FormData
+      onSave(formDataToSend);
+
+    } catch (error) {
+      console.error("❌ Error preparing form data:", error);
+      showToast.error("Failed to prepare garment data");
+    } finally {
+      setLoading(false);
     }
-
-    // Clean up blob URLs
-    previewImages.studio.forEach(img => {
-      if (img.preview && img.preview.startsWith('blob:')) {
-        URL.revokeObjectURL(img.preview);
-      }
-    });
-    previewImages.customerProvided.forEach(img => {
-      if (img.preview && img.preview.startsWith('blob:')) {
-        URL.revokeObjectURL(img.preview);
-      }
-    });
-    previewImages.customerCloth.forEach(img => {
-      if (img.preview && img.preview.startsWith('blob:')) {
-        URL.revokeObjectURL(img.preview);
-      }
-    });
-
-    onSave({
-      ...formData,
-      measurements: finalMeasurements,
-    });
   };
 
   // Group size fields by category
@@ -657,7 +735,7 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
               )}
             </div>
 
-            {/* IMAGES SECTION - WITH NEW CUSTOMER CLOTH SECTION */}
+            {/* IMAGES SECTION */}
             <div className="bg-slate-50 rounded-xl p-4">
               <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
                 <Camera size={20} className="text-blue-600" />
@@ -685,13 +763,15 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
                           alt={`Studio ${index + 1}`}
                           className="w-full h-24 object-cover rounded-lg"
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index, "studio")}
-                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        {!img.isExisting && (
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index, "studio")}
+                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     ))}
                     <label className="border-2 border-dashed border-slate-300 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-all">
@@ -731,13 +811,15 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
                           alt={`Customer Digital ${index + 1}`}
                           className="w-full h-24 object-cover rounded-lg"
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index, "customerProvided")}
-                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        {!img.isExisting && (
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index, "customerProvided")}
+                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     ))}
                     <label className="border-2 border-dashed border-slate-300 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-all">
@@ -756,7 +838,7 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
                 </div>
               </div>
 
-              {/* NEW: Customer Physical Cloth Images */}
+              {/* Customer Physical Cloth Images */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -777,13 +859,15 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
                           alt={`Customer Cloth ${index + 1}`}
                           className="w-full h-24 object-cover rounded-lg border-2 border-orange-200"
                         />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index, "customerCloth")}
-                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        {!img.isExisting && (
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index, "customerCloth")}
+                            className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     ))}
                     <label className="border-2 border-dashed border-orange-300 rounded-lg h-24 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-100 transition-all">
@@ -863,9 +947,12 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
             <div className="flex gap-3 pt-4">
               <button
                 type="submit"
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all"
+                disabled={loading}
+                className={`flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl font-black hover:bg-blue-700 transition-all ${
+                  loading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
-                {editingGarment ? "Update Garment" : "Add Garment"}
+                {loading ? 'Processing...' : (editingGarment ? "Update Garment" : "Add Garment")}
               </button>
               <button
                 type="button"

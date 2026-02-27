@@ -2,14 +2,11 @@
 import mongoose from "mongoose";
 
 const customerSchema = new mongoose.Schema({
-  // ✅ Auto-generated Customer ID
   customerId: {
     type: String,
     unique: true,
     index: true,
   },
-
-  // Personal Information
   salutation: {
     type: String,
     enum: ["Mr.", "Mrs.", "Ms.", "Dr."],
@@ -24,8 +21,6 @@ const customerSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  
-  // Contact Information
   phone: {
     type: String,
     required: [true, "Phone number is required"],
@@ -41,8 +36,6 @@ const customerSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   },
-  
-  // Address Information
   addressLine1: {
     type: String,
     required: [true, "Address is required"],
@@ -64,14 +57,10 @@ const customerSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  
-  // Additional Information
   notes: {
     type: String,
     trim: true
   },
-  
-  // Computed field for backward compatibility
   name: {
     type: String,
     trim: true
@@ -80,42 +69,35 @@ const customerSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  
-  // Stats
   totalOrders: {
     type: Number,
     default: 0
   }
 }, { 
-  timestamps: true
+  timestamps: true,
+  // ✅ IMPORTANT: Allows ID generation before validation
+  validateBeforeSave: false 
 });
 
-// ✅ Pre-save middleware to generate customerId
-customerSchema.pre("save", async function(next) {
+// ✅ FIXED: Modern Async Pre-save (NO 'next' parameter)
+customerSchema.pre("save", async function() {
   try {
-    // Generate customer ID if not exists
+    console.log("🔧 Customer pre-save hook triggered for:", this.firstName);
+    
+    // 1. Generate customer ID if it doesn't exist
     if (!this.customerId) {
-      // Get the count of existing customers
       const count = await mongoose.model("Customer").countDocuments();
-      
-      // Generate ID in format: CUST-2024-00001
       const year = new Date().getFullYear();
       const sequential = String(count + 1).padStart(5, "0");
       
-      // Option 1: Year-based ID (CUST-2024-00001)
       this.customerId = `CUST-${year}-${sequential}`;
-      
-      // Option 2: Timestamp based (CUST-1708423456789)
-      // this.customerId = `CUST${Date.now()}`;
-      
-      // Option 3: Random alphanumeric (CUST-ABC123XYZ)
-      // this.customerId = `CUST${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+      console.log(`✅ Generated customerId: ${this.customerId}`);
     }
 
-    // Combine name for backward compatibility
-    this.name = `${this.salutation} ${this.firstName} ${this.lastName || ''}`.trim();
+    // 2. Combine name for backward compatibility
+    this.name = `${this.salutation || ''} ${this.firstName || ''} ${this.lastName || ''}`.trim();
     
-    // Combine address for backward compatibility
+    // 3. Combine address for backward compatibility
     const addressParts = [
       this.addressLine1,
       this.addressLine2,
@@ -125,15 +107,25 @@ customerSchema.pre("save", async function(next) {
     ].filter(Boolean);
     this.address = addressParts.join(', ');
 
-    next();
+    // 4. Manually trigger validation since auto-validation is disabled
+    await this.validate();
+
+    console.log("✅ Customer pre-save completed successfully");
+    
   } catch (error) {
-    next(error);
+    console.error("❌ Error in customer pre-save hook:", error);
+    // In async hooks, throwing an error is the same as calling next(error)
+    throw error; 
   }
 });
 
 // Virtual for full name
 customerSchema.virtual('fullName').get(function() {
-  return `${this.salutation} ${this.firstName} ${this.lastName || ''}`.trim();
+  return `${this.salutation || ''} ${this.firstName || ''} ${this.lastName || ''}`.trim();
 });
 
-export default mongoose.model("Customer", customerSchema);
+customerSchema.set('toJSON', { virtuals: true });
+customerSchema.set('toObject', { virtuals: true });
+
+const Customer = mongoose.models.Customer || mongoose.model("Customer", customerSchema);
+export default Customer;

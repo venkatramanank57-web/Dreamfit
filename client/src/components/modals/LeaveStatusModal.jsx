@@ -51,22 +51,27 @@ export default function LeaveStatusModal({ tailor, onClose, onUpdate }) {
     });
   }, []);
 
+  // ===== UPDATED VALIDATION FUNCTION =====
   const validateDates = () => {
     const errors = {};
     
     if (leaveData.leaveStatus !== "present") {
+      // Validate From Date
       if (!leaveData.leaveFrom) {
         errors.leaveFrom = "From date is required";
       }
       
+      // Validate To Date for full day leave
       if (leaveData.leaveStatus === "leave" && !leaveData.leaveTo) {
         errors.leaveTo = "To date is required for full day leave";
       }
 
+      // Validate Date Order
       if (leaveData.leaveFrom && leaveData.leaveTo) {
         const fromDate = new Date(leaveData.leaveFrom);
         const toDate = new Date(leaveData.leaveTo);
         
+        // Reset hours to compare only the calendar date
         fromDate.setHours(0, 0, 0, 0);
         toDate.setHours(0, 0, 0, 0);
         
@@ -80,17 +85,28 @@ export default function LeaveStatusModal({ tailor, onClose, onUpdate }) {
     return Object.keys(errors).length === 0;
   };
 
+  // ===== UPDATED SUBMIT HANDLER =====
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     logDebug('Form submitted with data:', leaveData);
 
-    if (!validateDates()) {
-      const firstError = Object.values(validationErrors)[0];
-      showToast.error(firstError);
+    // 1. Run validation
+    const isValid = validateDates();
+
+    // 2. Handle validation errors
+    if (!isValid) {
+      // Check for dateOrder specifically first
+      if (validationErrors.dateOrder) {
+        showToast.error(validationErrors.dateOrder);
+      } else {
+        const firstError = Object.values(validationErrors)[0];
+        showToast.error(firstError);
+      }
       return;
     }
 
+    // 3. Check reason
     if (leaveData.leaveStatus !== "present" && !leaveData.leaveReason.trim()) {
       showToast.error("Please enter leave reason");
       return;
@@ -168,17 +184,40 @@ export default function LeaveStatusModal({ tailor, onClose, onUpdate }) {
     setValidationErrors({});
   };
 
+  // ===== UPDATED TO DATE CHANGE HANDLER =====
   const handleToDateChange = (e) => {
     const newTo = e.target.value;
     logDebug('To date changed to:', newTo);
     
-    if (leaveData.leaveFrom && new Date(newTo) < new Date(leaveData.leaveFrom)) {
-      showToast.error("To date cannot be before from date");
-      return;
+    // Check if from date exists and new to date is valid
+    if (leaveData.leaveFrom) {
+      const fromDate = new Date(leaveData.leaveFrom);
+      const toDate = new Date(newTo);
+      
+      // Reset hours for comparison
+      fromDate.setHours(0, 0, 0, 0);
+      toDate.setHours(0, 0, 0, 0);
+      
+      if (toDate < fromDate) {
+        // Show error and set the date with error state
+        setValidationErrors({ 
+          ...validationErrors, 
+          dateOrder: "To date cannot be before from date" 
+        });
+        setLeaveData({ ...leaveData, leaveTo: newTo }); // Still set the date, but keep error visible
+      } else {
+        // Clear date error if valid
+        setValidationErrors((prev) => {
+          const { dateOrder, ...rest } = prev;
+          return rest;
+        });
+        setLeaveData({ ...leaveData, leaveTo: newTo });
+      }
+    } else {
+      // If no from date selected, just set the date
+      setLeaveData({ ...leaveData, leaveTo: newTo });
+      setValidationErrors({});
     }
-    
-    setLeaveData({ ...leaveData, leaveTo: newTo });
-    setValidationErrors({});
   };
 
   const handleReasonChange = (e) => {
@@ -219,6 +258,7 @@ export default function LeaveStatusModal({ tailor, onClose, onUpdate }) {
                   <div>Tailor ID: {tailor?._id}</div>
                   <div>Current Status: {tailor?.leaveStatus}</div>
                   <div>Form Data: {JSON.stringify(leaveData, null, 2)}</div>
+                  <div>Validation Errors: {JSON.stringify(validationErrors, null, 2)}</div>
                 </div>
               </details>
             </div>
@@ -258,10 +298,18 @@ export default function LeaveStatusModal({ tailor, onClose, onUpdate }) {
                       value={leaveData.leaveFrom}
                       onChange={handleFromDateChange}
                       min={today}
-                      className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      className={`w-full pl-12 pr-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
+                        validationErrors.leaveFrom ? 'border-red-500' : 'border-slate-200'
+                      }`}
                       required
                     />
                   </div>
+                  {validationErrors.leaveFrom && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      {validationErrors.leaveFrom}
+                    </p>
+                  )}
                 </div>
 
                 {/* Leave To - Only for full day leave */}
@@ -277,10 +325,18 @@ export default function LeaveStatusModal({ tailor, onClose, onUpdate }) {
                         value={leaveData.leaveTo}
                         onChange={handleToDateChange}
                         min={leaveData.leaveFrom || today}
-                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                        className={`w-full pl-12 pr-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
+                          validationErrors.leaveTo || validationErrors.dateOrder ? 'border-red-500' : 'border-slate-200'
+                        }`}
                         required
                       />
                     </div>
+                    {validationErrors.leaveTo && (
+                      <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                        <AlertCircle size={12} />
+                        {validationErrors.leaveTo}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -294,7 +350,7 @@ export default function LeaveStatusModal({ tailor, onClose, onUpdate }) {
                   </div>
                 )}
 
-                {/* Error Message */}
+                {/* Date Order Error Message */}
                 {validationErrors.dateOrder && (
                   <div className="bg-red-50 p-3 rounded-lg border border-red-200">
                     <p className="text-xs text-red-600 flex items-center gap-1">

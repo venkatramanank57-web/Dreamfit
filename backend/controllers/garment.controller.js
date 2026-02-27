@@ -6,6 +6,8 @@ import r2Service from "../services/r2.service.js";
 import mongoose from "mongoose";
 
 // ===== CREATE GARMENT =====
+// backend/controllers/garment.controller.js
+
 export const createGarment = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -31,37 +33,83 @@ export const createGarment = async (req, res) => {
       createdBy: createdBy || req.body.createdBy || req.user?.id,
     });
 
+    // ✅ CRITICAL: Log what files are received
+    console.log("📸 Files received:", {
+      referenceImages: req.files?.referenceImages?.length || 0,
+      customerImages: req.files?.customerImages?.length || 0,
+      customerClothImages: req.files?.customerClothImages?.length || 0,
+    });
+
     // Initialize image arrays
     let referenceImages = [];
     let customerImages = [];
-    let customerClothImages = []; // NEW: Customer physical cloth images
+    let customerClothImages = [];
 
-    // Upload reference images if any
-    if (req.files?.referenceImages) {
+    // ✅ Upload reference images to R2
+    if (req.files?.referenceImages && req.files.referenceImages.length > 0) {
+      console.log(`📸 Uploading ${req.files.referenceImages.length} reference images`);
       for (const file of req.files.referenceImages) {
-        const upload = await r2Service.uploadFile(file, file.originalname);
+        console.log(`   Processing: ${file.originalname} (${file.size} bytes)`);
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/reference'
+        );
         if (upload.success) {
-          referenceImages.push({ url: upload.url, key: upload.key });
+          referenceImages.push({ 
+            url: upload.url, 
+            key: upload.key,
+            uploadedAt: new Date()
+          });
+          console.log(`   ✅ Uploaded: ${upload.url}`);
+        } else {
+          console.error(`   ❌ Failed to upload: ${file.originalname}`, upload.error);
         }
       }
     }
 
-    // Upload customer digital images if any
-    if (req.files?.customerImages) {
+    // ✅ Upload customer digital images to R2
+    if (req.files?.customerImages && req.files.customerImages.length > 0) {
+      console.log(`📸 Uploading ${req.files.customerImages.length} customer images`);
       for (const file of req.files.customerImages) {
-        const upload = await r2Service.uploadFile(file, file.originalname);
+        console.log(`   Processing: ${file.originalname} (${file.size} bytes)`);
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/customer'
+        );
         if (upload.success) {
-          customerImages.push({ url: upload.url, key: upload.key });
+          customerImages.push({ 
+            url: upload.url, 
+            key: upload.key,
+            uploadedAt: new Date()
+          });
+          console.log(`   ✅ Uploaded: ${upload.url}`);
+        } else {
+          console.error(`   ❌ Failed to upload: ${file.originalname}`, upload.error);
         }
       }
     }
 
-    // NEW: Upload customer physical cloth images if any
-    if (req.files?.customerClothImages) {
+    // ✅ Upload customer cloth images to R2
+    if (req.files?.customerClothImages && req.files.customerClothImages.length > 0) {
+      console.log(`📸 Uploading ${req.files.customerClothImages.length} cloth images`);
       for (const file of req.files.customerClothImages) {
-        const upload = await r2Service.uploadFile(file, file.originalname);
+        console.log(`   Processing: ${file.originalname} (${file.size} bytes)`);
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/cloth'
+        );
         if (upload.success) {
-          customerClothImages.push({ url: upload.url, key: upload.key });
+          customerClothImages.push({ 
+            url: upload.url, 
+            key: upload.key,
+            uploadedAt: new Date()
+          });
+          console.log(`   ✅ Uploaded: ${upload.url}`);
+        } else {
+          console.error(`   ❌ Failed to upload: ${file.originalname}`, upload.error);
         }
       }
     }
@@ -97,7 +145,8 @@ export const createGarment = async (req, res) => {
 
     console.log("👤 Using userId for garment:", userId);
 
-    const garment = await Garment.create({
+    // ✅ Create garment with all image arrays
+    const garment = new Garment({
       order: orderId,
       name,
       category,
@@ -105,16 +154,29 @@ export const createGarment = async (req, res) => {
       measurementTemplate: measurementTemplate || null,
       measurementSource: measurementSource || "template",
       measurements: parsedMeasurements || [],
-      referenceImages,
-      customerImages,
-      customerClothImages, // NEW: Save customer cloth images
+      referenceImages,      // ✅ This will be saved to database
+      customerImages,       // ✅ This will be saved to database
+      customerClothImages,  // ✅ This will be saved to database
       additionalInfo,
       estimatedDelivery,
       priority: priority || "normal",
       priceRange: parsedPriceRange || { min: 0, max: 0 },
     });
 
-    console.log("✅ Garment created:", garment._id);
+    console.log("💾 Saving garment with images:", {
+      referenceImages: referenceImages.length,
+      customerImages: customerImages.length,
+      customerClothImages: customerClothImages.length,
+    });
+
+    await garment.save();
+    
+    console.log("✅ Garment created with ID:", garment._id);
+    console.log("📸 Images saved in database:", {
+      reference: garment.referenceImages.length,
+      customer: garment.customerImages.length,
+      cloth: garment.customerClothImages.length,
+    });
 
     // Find cutting master for work assignment
     const cuttingMaster = await User.findOne({ 
@@ -183,6 +245,15 @@ export const getGarmentsByOrder = async (req, res) => {
       .populate("workId")
       .sort({ createdAt: -1 });
 
+    console.log(`📦 Found ${garments.length} garments for order ${orderId}`);
+    garments.forEach(g => {
+      console.log(`🎨 Garment ${g.garmentId}:`, {
+        referenceImages: g.referenceImages?.length || 0,
+        customerImages: g.customerImages?.length || 0,
+        customerClothImages: g.customerClothImages?.length || 0
+      });
+    });
+
     res.json(garments);
   } catch (error) {
     console.error("Get garments by order error:", error);
@@ -216,25 +287,92 @@ export const getGarmentById = async (req, res) => {
 };
 
 // ===== UPDATE GARMENT =====
+// backend/controllers/garment.controller.js
+
+// ===== UPDATE GARMENT =====
 export const updateGarment = async (req, res) => {
   try {
-    const garment = await Garment.findById(req.params.id);
+    const { id } = req.params;
+    console.log("📝 Updating garment:", id);
+    console.log("📦 Request body:", req.body);
+    console.log("📸 Request files:", req.files);
+
+    const garment = await Garment.findById(id);
 
     if (!garment) {
       return res.status(404).json({ message: "Garment not found" });
     }
 
-    const {
+    // Parse JSON fields from FormData
+    let {
       name,
+      category,
+      item,
+      measurementTemplate,
+      measurementSource,
       measurements,
       additionalInfo,
       estimatedDelivery,
       priority,
       priceRange,
       status,
+      existingReferenceImages,
+      existingCustomerImages,
+      existingClothImages
     } = req.body;
 
+    // Parse JSON strings if they came from FormData
+    if (measurements && typeof measurements === 'string') {
+      try {
+        measurements = JSON.parse(measurements);
+      } catch (e) {
+        console.error("Error parsing measurements:", e);
+      }
+    }
+
+    if (priceRange && typeof priceRange === 'string') {
+      try {
+        priceRange = JSON.parse(priceRange);
+      } catch (e) {
+        console.error("Error parsing priceRange:", e);
+      }
+    }
+
+    // Parse existing image keys
+    let keepReferenceKeys = [];
+    let keepCustomerKeys = [];
+    let keepClothKeys = [];
+
+    if (existingReferenceImages && typeof existingReferenceImages === 'string') {
+      try {
+        keepReferenceKeys = JSON.parse(existingReferenceImages);
+      } catch (e) {
+        console.error("Error parsing existingReferenceImages:", e);
+      }
+    }
+
+    if (existingCustomerImages && typeof existingCustomerImages === 'string') {
+      try {
+        keepCustomerKeys = JSON.parse(existingCustomerImages);
+      } catch (e) {
+        console.error("Error parsing existingCustomerImages:", e);
+      }
+    }
+
+    if (existingClothImages && typeof existingClothImages === 'string') {
+      try {
+        keepClothKeys = JSON.parse(existingClothImages);
+      } catch (e) {
+        console.error("Error parsing existingClothImages:", e);
+      }
+    }
+
+    // Update basic fields
     if (name) garment.name = name;
+    if (category) garment.category = category;
+    if (item) garment.item = item;
+    if (measurementTemplate) garment.measurementTemplate = measurementTemplate;
+    if (measurementSource) garment.measurementSource = measurementSource;
     if (measurements) garment.measurements = measurements;
     if (additionalInfo !== undefined) garment.additionalInfo = additionalInfo;
     if (estimatedDelivery) garment.estimatedDelivery = estimatedDelivery;
@@ -242,18 +380,98 @@ export const updateGarment = async (req, res) => {
     if (priceRange) garment.priceRange = priceRange;
     if (status) garment.status = status;
 
+    // Handle images - keep only those not deleted
+    if (keepReferenceKeys.length > 0) {
+      garment.referenceImages = garment.referenceImages.filter(img => 
+        keepReferenceKeys.includes(img.key)
+      );
+    } else {
+      garment.referenceImages = []; // Remove all if none to keep
+    }
+
+    if (keepCustomerKeys.length > 0) {
+      garment.customerImages = garment.customerImages.filter(img => 
+        keepCustomerKeys.includes(img.key)
+      );
+    } else {
+      garment.customerImages = [];
+    }
+
+    if (keepClothKeys.length > 0) {
+      garment.customerClothImages = garment.customerClothImages.filter(img => 
+        keepClothKeys.includes(img.key)
+      );
+    } else {
+      garment.customerClothImages = [];
+    }
+
+    // Upload new reference images
+    if (req.files?.referenceImages) {
+      for (const file of req.files.referenceImages) {
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/reference'
+        );
+        if (upload.success) {
+          garment.referenceImages.push({ 
+            url: upload.url, 
+            key: upload.key,
+            uploadedAt: new Date()
+          });
+        }
+      }
+    }
+
+    // Upload new customer images
+    if (req.files?.customerImages) {
+      for (const file of req.files.customerImages) {
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/customer'
+        );
+        if (upload.success) {
+          garment.customerImages.push({ 
+            url: upload.url, 
+            key: upload.key,
+            uploadedAt: new Date()
+          });
+        }
+      }
+    }
+
+    // Upload new cloth images
+    if (req.files?.customerClothImages) {
+      for (const file of req.files.customerClothImages) {
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/cloth'
+        );
+        if (upload.success) {
+          garment.customerClothImages.push({ 
+            url: upload.url, 
+            key: upload.key,
+            uploadedAt: new Date()
+          });
+        }
+      }
+    }
+
     await garment.save();
+    console.log("✅ Garment updated successfully");
 
     res.json({
       message: "Garment updated successfully",
       garment
     });
+
   } catch (error) {
-    console.error("Update garment error:", error);
+    console.error("❌ Update garment error:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
 // ===== DELETE GARMENT =====
 export const deleteGarment = async (req, res) => {
   try {
@@ -263,14 +481,14 @@ export const deleteGarment = async (req, res) => {
       return res.status(404).json({ message: "Garment not found" });
     }
 
-    // Delete images from R2 - Updated to include customerClothImages
+    // Delete images from R2
     for (const img of garment.referenceImages) {
       if (img.key) await r2Service.deleteFile(img.key);
     }
     for (const img of garment.customerImages) {
       if (img.key) await r2Service.deleteFile(img.key);
     }
-    for (const img of garment.customerClothImages) { // NEW
+    for (const img of garment.customerClothImages) {
       if (img.key) await r2Service.deleteFile(img.key);
     }
 
@@ -305,12 +523,16 @@ export const updateGarmentImages = async (req, res) => {
 
     let referenceImages = [...garment.referenceImages];
     let customerImages = [...garment.customerImages];
-    let customerClothImages = [...(garment.customerClothImages || [])]; // NEW
+    let customerClothImages = [...(garment.customerClothImages || [])];
 
     // Upload new reference images
     if (req.files?.referenceImages) {
       for (const file of req.files.referenceImages) {
-        const upload = await r2Service.uploadFile(file, file.originalname);
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/reference'
+        );
         if (upload.success) {
           referenceImages.push({ url: upload.url, key: upload.key });
         }
@@ -320,17 +542,25 @@ export const updateGarmentImages = async (req, res) => {
     // Upload new customer digital images
     if (req.files?.customerImages) {
       for (const file of req.files.customerImages) {
-        const upload = await r2Service.uploadFile(file, file.originalname);
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/customer-digital'
+        );
         if (upload.success) {
           customerImages.push({ url: upload.url, key: upload.key });
         }
       }
     }
 
-    // NEW: Upload new customer cloth images
+    // Upload new customer cloth images
     if (req.files?.customerClothImages) {
       for (const file of req.files.customerClothImages) {
-        const upload = await r2Service.uploadFile(file, file.originalname);
+        const upload = await r2Service.uploadFile(
+          file, 
+          file.originalname, 
+          'garments/customer-cloth'
+        );
         if (upload.success) {
           customerClothImages.push({ url: upload.url, key: upload.key });
         }
@@ -339,7 +569,7 @@ export const updateGarmentImages = async (req, res) => {
 
     garment.referenceImages = referenceImages;
     garment.customerImages = customerImages;
-    garment.customerClothImages = customerClothImages; // NEW
+    garment.customerClothImages = customerClothImages;
     await garment.save();
 
     res.json({
@@ -356,7 +586,7 @@ export const updateGarmentImages = async (req, res) => {
 export const deleteGarmentImage = async (req, res) => {
   try {
     const { id } = req.params;
-    const { imageKey, imageType } = req.body; // imageType: 'reference', 'customer', or 'customerCloth'
+    const { imageKey, imageType } = req.body;
 
     const garment = await Garment.findById(id);
 
@@ -376,7 +606,7 @@ export const deleteGarmentImage = async (req, res) => {
       garment.customerImages = garment.customerImages.filter(
         img => img.key !== imageKey
       );
-    } else if (imageType === 'customerCloth') { // NEW
+    } else if (imageType === 'customerCloth') {
       garment.customerClothImages = garment.customerClothImages.filter(
         img => img.key !== imageKey
       );

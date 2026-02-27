@@ -28,14 +28,74 @@ export const fetchTailorById = createAsyncThunk(
   }
 );
 
+// ===== CREATE TAILOR - UPDATED WITH DEBUG LOGS =====
 export const createTailor = createAsyncThunk(
   "tailor/create",
   async (tailorData, { rejectWithValue }) => {
     try {
-      const response = await tailorApi.createTailorApi(tailorData);
+      // DEBUG: Log the data received in thunk
+      console.log("🔵 [Redux Thunk] createTailor received:", {
+        ...tailorData,
+        password: tailorData.password ? `✅ PRESENT (${tailorData.password.length} chars)` : "❌ MISSING",
+        passwordFirstChars: tailorData.password ? tailorData.password.substring(0, 3) + '...' : null
+      });
+
+      // CRITICAL CHECK: Verify password exists
+      if (!tailorData.password) {
+        console.error("🔴 [Redux Thunk] CRITICAL: Password is missing in thunk!");
+        
+        // Check if password might be in a different property
+        const possiblePasswordProps = ['password', 'pass', 'pwd', 'Password'];
+        const foundProps = possiblePasswordProps.filter(prop => tailorData[prop]);
+        
+        if (foundProps.length > 0) {
+          console.log("🔵 [Redux Thunk] Found password in alternative property:", foundProps[0]);
+          // Use the found password property
+          tailorData.password = tailorData[foundProps[0]];
+        } else {
+          return rejectWithValue({ 
+            message: "Password is required but was not provided in the request data" 
+          });
+        }
+      }
+
+      // Ensure all required fields are present
+      const apiData = {
+        name: tailorData.name,
+        phone: tailorData.phone,
+        email: tailorData.email || undefined,
+        password: tailorData.password, // Explicitly include password
+        experience: tailorData.experience || 0,
+        specialization: Array.isArray(tailorData.specialization) ? tailorData.specialization : [],
+        address: tailorData.address || {}
+      };
+
+      // DEBUG: Log the data being sent to API
+      console.log("🔵 [Redux Thunk] Sending to API:", {
+        ...apiData,
+        password: apiData.password ? `✅ PRESENT (${apiData.password.length} chars)` : "❌ MISSING",
+        passwordPreview: apiData.password ? apiData.password.substring(0, 3) + '...' : null
+      });
+
+      // Make the API call
+      const response = await tailorApi.createTailorApi(apiData);
+      
+      // DEBUG: Log the API response
+      console.log("🔵 [Redux Thunk] API Response:", response);
+      
       return response;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to create tailor");
+      console.error("🔴 [Redux Thunk] Error:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      return rejectWithValue(
+        error.response?.data?.message || 
+        error.message || 
+        "Failed to create tailor"
+      );
     }
   }
 );
@@ -225,9 +285,21 @@ const tailorSlice = createSlice({
       })
 
       // ===== CREATE TAILOR =====
+      .addCase(createTailor.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        console.log("🟡 [Redux] createTailor pending");
+      })
       .addCase(createTailor.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log("🟢 [Redux] createTailor fulfilled:", action.payload);
         state.tailors = [action.payload.tailor, ...state.tailors];
         state.pagination.total += 1;
+      })
+      .addCase(createTailor.rejected, (state, action) => {
+        state.loading = false;
+        console.error("🔴 [Redux] createTailor rejected:", action.payload);
+        state.error = action.payload;
       })
 
       // ===== UPDATE TAILOR =====

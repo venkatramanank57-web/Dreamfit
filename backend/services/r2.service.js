@@ -7,12 +7,14 @@ dotenv.config();
 
 class R2Service {
   constructor() {
-    console.log("🔧 Initializing R2 Service...");
+    console.log("\n" + "=".repeat(30));
+    console.log("🔧 INITIALIZING R2 SERVICE");
+    console.log("=".repeat(30));
     
-    // Log credentials (remove in production)
-    console.log("📁 R2_ENDPOINT:", process.env.R2_ENDPOINT ? "✅" : "❌");
-    console.log("🪣 R2_BUCKET:", process.env.R2_BUCKET);
-    console.log("🌐 R2_PUBLIC_URL:", process.env.R2_PUBLIC_URL);
+    // Debugging Env Variables
+    console.log("📁 R2_ENDPOINT:", process.env.R2_ENDPOINT ? "✅ SET" : "❌ MISSING");
+    console.log("🪣 R2_BUCKET:", process.env.R2_BUCKET || "❌ MISSING");
+    console.log("🌐 R2_PUBLIC_URL:", process.env.R2_PUBLIC_URL || "❌ MISSING");
 
     this.client = new S3Client({
       region: 'auto',
@@ -28,45 +30,90 @@ class R2Service {
     this.publicUrl = process.env.R2_PUBLIC_URL;
   }
 
-  generateFileName(originalName) {
+  /**
+   * ✅ Generates a clean filename with folder structure
+   */
+  generateFileName(originalName, folder = 'misc') {
     const timestamp = Date.now();
-    const random = crypto.randomBytes(8).toString('hex');
+    const random = crypto.randomBytes(4).toString('hex');
     const ext = originalName.split('.').pop();
-    return `fabrics/${timestamp}-${random}.${ext}`;
+    // Example: garments/1708892312-abcd.jpg
+    return `${folder}/${timestamp}-${random}.${ext}`;
   }
 
-  async uploadFile(file, fileName) {
+  /**
+   * ✅ Upload a single file (used for Fabrics/User Profile)
+   */
+  async uploadFile(file, folder = 'fabrics') {
     try {
-      console.log("📤 Uploading to R2:", fileName);
+      if (!file || !file.buffer) {
+        throw new Error("File buffer is missing. Check Multer configuration.");
+      }
+
+      const key = this.generateFileName(file.originalname, folder);
       
-      const key = this.generateFileName(fileName);
-      console.log("Generated key:", key);
-      console.log("Bucket:", this.bucket); // This should be just "dreamfit", not the full path
+      console.log(`\n📤 [SINGLE UPLOAD] Target: ${folder}`);
+      console.log(`📝 Filename: ${file.originalname}`);
+      console.log(`🔑 R2 Key: ${key}`);
 
       const command = new PutObjectCommand({
-        Bucket: this.bucket,        // ✅ This should be just "dreamfit"
-        Key: key,                   // ✅ This should be "fabrics/123-456.jpg"
+        Bucket: this.bucket,
+        Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
       });
 
       await this.client.send(command);
-      console.log("✅ Upload successful");
-
+      
+      console.log("✅ Upload Successful");
       return {
         success: true,
         key: key,
         url: `${this.publicUrl}/${key}`,
       };
     } catch (error) {
-      console.error('❌ R2 upload error:', error);
+      console.error('❌ R2 single upload error:', error.message);
       return { success: false, error: error.message };
     }
   }
 
-  async deleteFile(key) {
+  /**
+   * ✅ New: Upload multiple files (Used for Garments & Work)
+   * Essential for Cutting Master workflow
+   */
+  async uploadMultiple(files, folder = 'garments') {
+    if (!files || files.length === 0) {
+      console.log(`⚠️ No files provided for folder: ${folder}`);
+      return [];
+    }
+
+    console.log(`\n📦 [MULTIPLE UPLOAD] Processing ${files.length} files in /${folder}...`);
+
     try {
-      console.log("🗑️ Deleting:", key);
+      const uploadPromises = files.map(file => this.uploadFile(file, folder));
+      const results = await Promise.all(uploadPromises);
+      
+      // Filter only successful ones and return their data
+      const successfulUploads = results
+        .filter(r => r.success)
+        .map(r => ({ key: r.key, url: r.url }));
+
+      console.log(`✅ Successfully uploaded ${successfulUploads.length}/${files.length} files`);
+      return successfulUploads;
+    } catch (error) {
+      console.error('❌ R2 multiple upload error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * ✅ Delete file from R2
+   */
+  async deleteFile(key) {
+    if (!key) return { success: false, error: "No key provided" };
+
+    try {
+      console.log(`\n🗑️ [DELETE] Removing key: ${key}`);
       
       const command = new DeleteObjectCommand({
         Bucket: this.bucket,
@@ -74,11 +121,11 @@ class R2Service {
       });
 
       await this.client.send(command);
-      console.log("✅ Deleted");
+      console.log("✅ File deleted successfully from R2");
       
       return { success: true };
     } catch (error) {
-      console.error('❌ R2 delete error:', error);
+      console.error('❌ R2 delete error:', error.message);
       return { success: false, error: error.message };
     }
   }
