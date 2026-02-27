@@ -21,10 +21,10 @@ import {
   MessageCircle,
   Download,
 } from "lucide-react";
-import { fetchTailorById, deleteTailor } from "../../features/tailor/tailorSlice";
-import showToast from "../../utils/toast";
-import StatusBadge from "../../components/common/StatusBadge";
-import LeaveStatusModal from "../../components/modals/LeaveStatusModal";
+import { fetchTailorById, deleteTailor } from "../../../features/tailor/tailorSlice";
+import showToast from "../../../utils/toast";
+import StatusBadge from "../../../components/common/StatusBadge";
+import LeaveStatusModal from "../../../components/modals/LeaveStatusModal";
 
 export default function TailorDetails() {
   const { id } = useParams();
@@ -33,6 +33,11 @@ export default function TailorDetails() {
   
   const { currentTailor, works, workStats, loading } = useSelector((state) => state.tailor);
   const { user } = useSelector((state) => state.auth);
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -53,13 +58,15 @@ export default function TailorDetails() {
     }
   }, [dispatch, id]);
 
+  // ✅ Handle Back - with basePath
   const handleBack = () => {
-    navigate("/admin/tailors");
+    navigate(`${basePath}/tailors`);
   };
 
+  // ✅ Handle Edit - with basePath
   const handleEdit = () => {
     if (canEdit) {
-      navigate(`/admin/tailors/edit/${id}`);
+      navigate(`${basePath}/tailors/edit/${id}`);
     } else {
       showToast.error("You don't have permission to edit this tailor");
     }
@@ -69,7 +76,7 @@ export default function TailorDetails() {
     try {
       await dispatch(deleteTailor(id)).unwrap();
       showToast.success("Tailor deleted successfully");
-      navigate("/admin/tailors");
+      navigate(`${basePath}/tailors`);
     } catch (error) {
       showToast.error(error || "Failed to delete tailor");
     }
@@ -101,6 +108,11 @@ export default function TailorDetails() {
       month: 'short',
       year: 'numeric'
     });
+  };
+
+  // ✅ Handle Work click - with basePath
+  const handleWorkClick = (workId) => {
+    navigate(`${basePath}/works/${workId}`);
   };
 
   if (loading) {
@@ -379,7 +391,7 @@ export default function TailorDetails() {
                     <div
                       key={work._id}
                       className="bg-slate-50 rounded-xl p-4 border border-slate-200 hover:shadow-md transition-all cursor-pointer"
-                      onClick={() => navigate(`/admin/works/${work._id}`)}
+                      onClick={() => handleWorkClick(work._id)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">

@@ -8,11 +8,11 @@ import {
   AlertCircle, UserCog, Power, Eye,
   Scissors, HardHat, Store
 } from "lucide-react";
-import { fetchAllStaff, updateStaff, deleteStaff, toggleStaffStatus } from "../../features/user/userSlice";
-import { fetchAllTailors, deleteTailor } from "../../features/tailor/tailorSlice";
-import { fetchAllCuttingMasters, deleteCuttingMaster } from "../../features/cuttingMaster/cuttingMasterSlice";
-import { fetchAllStoreKeepers, deleteStoreKeeper } from "../../features/storeKeeper/storeKeeperSlice";
-import showToast from "../../utils/toast";
+import { fetchAllStaff, updateStaff, deleteStaff, toggleStaffStatus } from "../../../features/user/userSlice";
+import { fetchAllTailors, deleteTailor } from "../../../features/tailor/tailorSlice";
+import { fetchAllCuttingMasters, deleteCuttingMaster } from "../../../features/cuttingMaster/cuttingMasterSlice";
+import { fetchAllStoreKeepers, deleteStoreKeeper } from "../../../features/storeKeeper/storeKeeperSlice";
+import showToast from "../../../utils/toast";
 
 export default function Staff() {
   const navigate = useNavigate();

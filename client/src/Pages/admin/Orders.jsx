@@ -72,7 +72,14 @@ export default function Orders() {
   const isStoreKeeper = user?.role === "STORE_KEEPER";
   const canEdit = isAdmin || isStoreKeeper;
 
-  logDebug('User permissions', { isAdmin, isStoreKeeper, canEdit });
+  // ✅ Get base path based on user role
+  const basePath = useMemo(() => {
+    if (isAdmin) return "/admin";
+    if (isStoreKeeper) return "/storekeeper";
+    return "/cuttingmaster";
+  }, [isAdmin, isStoreKeeper]);
+
+  logDebug('User permissions', { isAdmin, isStoreKeeper, canEdit, basePath });
 
   // Log when filters change
   useEffect(() => {
@@ -139,19 +146,21 @@ export default function Orders() {
     setSearchTerm(value);
   }, []);
 
+  // ✅ FIXED: Use basePath for navigation
   const handleViewOrder = useCallback((id) => {
-    logDebug('View order', { id });
-    navigate(`/admin/orders/${id}`);
-  }, [navigate]);
+    logDebug('View order', { id, basePath });
+    navigate(`${basePath}/orders/${id}`);
+  }, [navigate, basePath]);
 
+  // ✅ FIXED: Use basePath for navigation
   const handleEditOrder = useCallback((id) => {
-    logDebug('Edit order', { id, canEdit });
+    logDebug('Edit order', { id, canEdit, basePath });
     if (canEdit) {
-      navigate(`/admin/orders/edit/${id}`);
+      navigate(`${basePath}/orders/edit/${id}`);
     } else {
       showToast.error("You don't have permission to edit orders");
     }
-  }, [canEdit, navigate]);
+  }, [canEdit, navigate, basePath]);
 
   const handleDeleteOrder = useCallback(async (id, orderId) => {
     logDebug('Delete order attempt', { id, orderId, canEdit });
@@ -177,10 +186,11 @@ export default function Orders() {
     }
   }, [dispatch, canEdit]);
 
+  // ✅ FIXED: Use basePath for navigation
   const handleNewOrder = useCallback(() => {
-    logDebug('Navigate to new order');
-    navigate("/admin/orders/new");
-  }, [navigate]);
+    logDebug('Navigate to new order', { basePath });
+    navigate(`${basePath}/orders/new`);
+  }, [navigate, basePath]);
 
   const handlePageChange = useCallback((newPage) => {
     logDebug('Page change requested', { newPage, currentPage, totalPages: pagination?.pages });
@@ -267,6 +277,8 @@ export default function Orders() {
             <div>Page: {currentPage}/{pagination?.pages || 1}</div>
             <div>Filters: S="{searchTerm}" | St="{statusFilter}" | T="{timeFilter}"</div>
             <div>Permissions: {canEdit ? '✏️ Edit' : '👀 View'}</div>
+            <div>Base Path: {basePath}</div>
+            <div>Role: {user?.role}</div>
           </div>
         </div>
       )}

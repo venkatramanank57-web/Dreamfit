@@ -12,8 +12,8 @@ import {
   Scissors,
   X,
 } from "lucide-react";
-import { fetchTailorById, updateTailor } from "../../features/tailor/tailorSlice";
-import showToast from "../../utils/toast";
+import { fetchTailorById, updateTailor } from "../../../features/tailor/tailorSlice";
+import showToast from "../../../utils/toast";
 
 export default function EditTailor() {
   const { id } = useParams();
@@ -22,6 +22,11 @@ export default function EditTailor() {
   
   const { currentTailor, loading } = useSelector((state) => state.tailor);
   const { user } = useSelector((state) => state.auth);
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   const [formData, setFormData] = useState({
     name: "",
@@ -71,8 +76,9 @@ export default function EditTailor() {
     }
   }, [currentTailor]);
 
+  // ✅ Handle Back - with basePath
   const handleBack = () => {
-    navigate(`/admin/tailors/${id}`);
+    navigate(`${basePath}/tailors/${id}`);
   };
 
   const handleChange = (e) => {
@@ -133,7 +139,8 @@ export default function EditTailor() {
     try {
       await dispatch(updateTailor({ id, tailorData: formData })).unwrap();
       showToast.success("Tailor updated successfully! 🎉");
-      navigate(`/admin/tailors/${id}`);
+      // ✅ Navigate with basePath
+      navigate(`${basePath}/tailors/${id}`);
     } catch (error) {
       showToast.error(error || "Failed to update tailor");
     } finally {

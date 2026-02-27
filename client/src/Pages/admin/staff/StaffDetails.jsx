@@ -8,12 +8,12 @@ import {
   Shield, Clock, CheckCircle, XCircle, Scissors, Star,
   HardHat, Store, Briefcase
 } from "lucide-react";
-import { fetchAllStaff } from "../../features/user/userSlice";
-import { fetchTailorById } from "../../features/tailor/tailorSlice";
-import { fetchCuttingMasterById } from "../../features/cuttingMaster/cuttingMasterSlice";
-import { fetchStoreKeeperById } from "../../features/storeKeeper/storeKeeperSlice";
-import showToast from "../../utils/toast";
-import API from "../../app/axios";
+import { fetchAllStaff } from "../../../features/user/userSlice";
+import { fetchTailorById } from "../../../features/tailor/tailorSlice";
+import { fetchCuttingMasterById } from "../../../features/cuttingMaster/cuttingMasterSlice";
+import { fetchStoreKeeperById } from "../../../features/storeKeeper/storeKeeperSlice";
+import showToast from "../../../utils/toast";
+import API from "../../../app/axios";
 
 export default function StaffDetails() {
   const { id } = useParams();

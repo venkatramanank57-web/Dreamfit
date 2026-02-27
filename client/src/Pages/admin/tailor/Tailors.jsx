@@ -21,10 +21,10 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { fetchAllTailors, deleteTailor, fetchTailorStats } from "../../features/tailor/tailorSlice";
-import showToast from "../../utils/toast";
-import StatusBadge from "../../components/common/StatusBadge";
-import LeaveStatusModal from "../../components/modals/LeaveStatusModal";
+import { fetchAllTailors, deleteTailor, fetchTailorStats } from "../../../features/tailor/tailorSlice";
+import showToast from "../../../utils/toast";
+import StatusBadge from "../../../components/common/StatusBadge";
+import LeaveStatusModal from "../../../components/modals/LeaveStatusModal";
 
 export default function Tailors() {
   const navigate = useNavigate();
@@ -32,6 +32,11 @@ export default function Tailors() {
   
   const { tailors, tailorStats, loading, pagination } = useSelector((state) => state.tailor);
   const { user } = useSelector((state) => state.auth);
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   // ✅ Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,17 +71,20 @@ export default function Tailors() {
     dispatch(fetchTailorStats());
   }, [dispatch, currentPage, itemsPerPage, searchTerm, statusFilter, availabilityFilter]);
 
+  // ✅ Handle Add Tailor - with basePath
   const handleAddTailor = () => {
-    navigate("/admin/tailors/add");
+    navigate(`${basePath}/tailors/add`);
   };
 
+  // ✅ Handle View Tailor - with basePath
   const handleViewTailor = (id) => {
-    navigate(`/admin/tailors/${id}`);
+    navigate(`${basePath}/tailors/${id}`);
   };
 
+  // ✅ Handle Edit Tailor - with basePath
   const handleEditTailor = (id) => {
     if (canEdit) {
-      navigate(`/admin/tailors/edit/${id}`);
+      navigate(`${basePath}/tailors/edit/${id}`);
     } else {
       showToast.error("You don't have permission to edit tailors");
     }

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   ArrowLeft,
   Save,
@@ -14,12 +14,18 @@ import {
   X,
   Lock,
 } from "lucide-react";
-import { createTailor } from "../../features/tailor/tailorSlice";
-import showToast from "../../utils/toast";
+import { createTailor } from "../../../features/tailor/tailorSlice";
+import showToast from "../../../utils/toast";
 
 export default function AddTailor() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   // Add password to initial state
   const [formData, setFormData] = useState({
@@ -40,8 +46,9 @@ export default function AddTailor() {
   const [specializationInput, setSpecializationInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ✅ Handle Back - with basePath
   const handleBack = () => {
-    navigate("/admin/tailors");
+    navigate(`${basePath}/tailors`);
   };
 
   const handleChange = (e) => {
@@ -124,25 +131,8 @@ export default function AddTailor() {
       finalPassword: password ? "[SET - " + password.length + " chars]" : "[MISSING - PROBLEM!]"
     });
 
-    // Prepare data for API - METHOD 1: Using spread
-    const tailorDataMethod1 = {
-      ...formData,
-      password: password,
-      experience: formData.experience ? parseInt(formData.experience) : 0,
-    };
-    
-    // DEBUG: Check if password survived the spread
-    console.log("🔍 STEP 3A - After spread operation:", {
-      passwordInMethod1: tailorDataMethod1.password ? "[PRESENT]" : "[MISSING - CRITICAL ERROR!]",
-      passwordValue: tailorDataMethod1.password ? tailorDataMethod1.password.substring(0, 3) + "..." : "null",
-      fullDataMethod1: {
-        ...tailorDataMethod1,
-        password: tailorDataMethod1.password ? "[HIDDEN]" : null
-      }
-    });
-
-    // METHOD 2: Explicit object creation (more reliable)
-    const tailorDataMethod2 = {
+    // Prepare data for API - Explicit object creation
+    const tailorData = {
       name: formData.name,
       phone: formData.phone,
       email: formData.email || "",
@@ -156,19 +146,6 @@ export default function AddTailor() {
         pincode: formData.address.pincode || ""
       }
     };
-
-    // DEBUG: Compare both methods
-    console.log("🔍 STEP 3B - Method 2 (explicit object):", {
-      passwordInMethod2: tailorDataMethod2.password ? "[PRESENT]" : "[MISSING - CRITICAL ERROR!]",
-      passwordValue: tailorDataMethod2.password ? tailorDataMethod2.password.substring(0, 3) + "..." : "null",
-      fullDataMethod2: {
-        ...tailorDataMethod2,
-        password: tailorDataMethod2.password ? "[HIDDEN]" : null
-      }
-    });
-
-    // Choose which method to use (let's use Method 2 to be safe)
-    const tailorData = tailorDataMethod2;
 
     // FINAL DEBUG: Log the complete data being sent to dispatch
     console.log("🔍 STEP 4 - FINAL data being sent to Redux:", {
@@ -207,7 +184,8 @@ export default function AddTailor() {
         showToast.success("Tailor created successfully! 🎉");
       }
       
-      navigate("/admin/tailors");
+      // ✅ Navigate with basePath
+      navigate(`${basePath}/tailors`);
     } catch (error) {
       console.error("❌ STEP 6 - Creation error:", error);
       

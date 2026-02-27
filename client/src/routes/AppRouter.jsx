@@ -16,8 +16,8 @@ import Orders from "../Pages/admin/Orders";
 import Customer from "../Pages/common/Customers";
 import AddCustomer from "../Pages/common/AddCustomer";
 import CustomerDetails from "../Pages/common/CustomerDetails";
-import Staff from "../Pages/admin/Staff";
-import StaffDetails from "../Pages/admin/StaffDetails";
+import Staff from "../Pages/admin/staff/Staff";
+import StaffDetails from "../Pages/admin/staff/StaffDetails";
 import AddStaff from "../Pages/common/AddStaff";
 
 // Product Management Components
@@ -37,15 +37,15 @@ import EditTemplate from "../Pages/admin/EditTemplate";
 import NewOrder from "../Pages/admin/NewOrder";
 import OrderDetails from "../Pages/admin/OrderDetails";
 import WorkPage from "../Pages/admin/WorkPage";
-import GarmentDetails from "../Pages/admin/GarmentDetails";
+import GarmentDetails from "../Pages/admin/garment/GarmentDetails";
 import EditOrder from "../Pages/admin/EditOrder";
 import EditGarment from "../Pages/admin/garment/EditGarment"; 
 
 // ✅ TAILOR MANAGEMENT COMPONENTS
-import Tailors from "../Pages/admin/Tailors";
-import AddTailor from "../Pages/admin/AddTailor";
-import TailorDetails from "../Pages/admin/TailorDetails";
-import EditTailor from "../Pages/admin/EditTailor";
+import Tailors from "../Pages/admin/tailor/Tailors";
+import AddTailor from "../Pages/admin/tailor/AddTailor";
+import TailorDetails from "../Pages/admin/tailor/TailorDetails";
+import EditTailor from "../Pages/admin/tailor/EditTailor";
 
 // ✅ NEW: CUTTING MASTER COMPONENTS
 import CuttingMasters from "../Pages/admin/cuttingMaster/CuttingMasters";

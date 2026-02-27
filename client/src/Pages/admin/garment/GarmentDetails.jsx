@@ -17,8 +17,8 @@ import {
   Download,
   Printer,
 } from "lucide-react";
-import { fetchGarmentById, deleteGarment } from "../../features/garment/garmentSlice";
-import showToast from "../../utils/toast";
+import { fetchGarmentById, deleteGarment } from "../../../features/garment/garmentSlice";
+import showToast from "../../../utils/toast";
 
 export default function GarmentDetails() {
   const { id } = useParams();
@@ -27,6 +27,11 @@ export default function GarmentDetails() {
   
   const { currentGarment, loading } = useSelector((state) => state.garment);
   const { user } = useSelector((state) => state.auth);
+
+  // ✅ Get base path based on user role
+  const basePath = user?.role === "ADMIN" ? "/admin" : 
+                   user?.role === "STORE_KEEPER" ? "/storekeeper" : 
+                   "/cuttingmaster";
 
   const [selectedImage, setSelectedImage] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -41,17 +46,19 @@ export default function GarmentDetails() {
     }
   }, [dispatch, id]);
 
+  // ✅ Handle Back - with basePath
   const handleBack = () => {
     if (currentGarment?.order) {
-      navigate(`/admin/orders/${currentGarment.order._id}`);
+      navigate(`${basePath}/orders/${currentGarment.order._id}`);
     } else {
-      navigate("/admin/orders");
+      navigate(`${basePath}/orders`);
     }
   };
 
+  // ✅ Handle Edit - with basePath
   const handleEdit = () => {
     if (canEdit) {
-      navigate(`/admin/garments/edit/${id}`);
+      navigate(`${basePath}/garments/edit/${id}`);
     } else {
       showToast.error("You don't have permission to edit garments");
     }
@@ -67,7 +74,12 @@ export default function GarmentDetails() {
       try {
         await dispatch(deleteGarment(id)).unwrap();
         showToast.success("Garment deleted successfully");
-        navigate(`/admin/orders/${currentGarment?.order?._id}`);
+        // ✅ Navigate with basePath
+        if (currentGarment?.order) {
+          navigate(`${basePath}/orders/${currentGarment.order._id}`);
+        } else {
+          navigate(`${basePath}/orders`);
+        }
       } catch (error) {
         showToast.error("Failed to delete garment");
       }
@@ -111,7 +123,7 @@ export default function GarmentDetails() {
         <Package size={64} className="mx-auto text-slate-300 mb-4" />
         <h2 className="text-2xl font-bold text-slate-800">Garment Not Found</h2>
         <button
-          onClick={() => navigate("/admin/orders")}
+          onClick={() => navigate(`${basePath}/orders`)}
           className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
         >
           Back to Orders

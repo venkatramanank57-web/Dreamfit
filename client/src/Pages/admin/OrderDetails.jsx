@@ -237,12 +237,12 @@ export default function OrderDetails() {
     window.print();
   };
 
-  // Handle Send Acknowledgment
+  // ✅ Handle Send Acknowledgment
   const handleSendAcknowledgment = () => {
     showToast.success("Acknowledgment sent to customer");
   };
 
-  // Handle Ready for Pickup
+  // ✅ Handle Ready for Pickup
   const handleReadyForPickup = () => {
     showToast.success("Pickup notification sent to customer");
   };
@@ -838,7 +838,7 @@ export default function OrderDetails() {
                 </div>
               </div>
 
-              {/* ✅ TWO NEW BUTTONS ADDED HERE */}
+              {/* ✅ TWO NEW BUTTONS ADDED HERE - BOTTOM OF PAGE */}
               <div className="space-y-3 pt-2">
                 <button
                   onClick={handleSendAcknowledgment}
