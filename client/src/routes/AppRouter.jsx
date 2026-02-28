@@ -47,17 +47,22 @@ import AddTailor from "../Pages/admin/tailor/AddTailor";
 import TailorDetails from "../Pages/admin/tailor/TailorDetails";
 import EditTailor from "../Pages/admin/tailor/EditTailor";
 
-// ✅ NEW: CUTTING MASTER COMPONENTS
+// ✅ CUTTING MASTER COMPONENTS
 import CuttingMasters from "../Pages/admin/cuttingMaster/CuttingMasters";
 import AddCuttingMaster from "../Pages/admin/cuttingMaster/AddCuttingMaster";
 import CuttingMasterDetails from "../Pages/admin/cuttingMaster/CuttingMasterDetails";
 import EditCuttingMaster from "../Pages/admin/cuttingMaster/EditCuttingMaster";
 
-// ✅ NEW: STORE KEEPER COMPONENTS
+// ✅ STORE KEEPER COMPONENTS
 import StoreKeepers from "../Pages/admin/storeKeeper/StoreKeepers";
 import AddStoreKeeper from "../Pages/admin/storeKeeper/AddStoreKeeper";
 import StoreKeeperDetails from "../Pages/admin/storeKeeper/StoreKeeperDetails";
 import EditStoreKeeper from "../Pages/admin/storeKeeper/EditStoreKeeper";
+
+// ✅ BANKING MODULE COMPONENTS - ONLY 3 MAIN PAGES
+import BankingOverview from "../Pages/banking/BankingOverview";
+import IncomePage from "../Pages/banking/IncomePage";
+import ExpensePage from "../Pages/banking/ExpensePage";
 
 // Placeholders
 const ManagerDashboard = () => (
@@ -75,12 +80,6 @@ const StoreKeeperDashboard = () => (
 const CuttingMasterDashboard = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
     Master Work List
-  </div>
-);
-
-const BankingPlaceholder = ({ title }) => (
-  <div className="p-8 font-black text-slate-800 uppercase italic font-sans">
-    {title} Section
   </div>
 );
 
@@ -186,9 +185,9 @@ export default function AppRouter() {
           <Route path="orders/:id" element={<OrderDetails />} />
           <Route path="orders/edit/:id" element={<EditOrder />} />
           
-          {/* Garment Management - ✅ ADD EDIT GARMENT ROUTE HERE */}
+          {/* Garment Management */}
           <Route path="garments/:id" element={<GarmentDetails />} />
-          <Route path="garments/edit/:id" element={<EditGarment />} /> {/* ✅ NEW ROUTE */}
+          <Route path="garments/edit/:id" element={<EditGarment />} />
           
           {/* Work Management */}
           <Route path="works" element={<WorkPage />} />
@@ -200,13 +199,13 @@ export default function AppRouter() {
           <Route path="tailors/:id" element={<TailorDetails />} />
           <Route path="tailors/edit/:id" element={<EditTailor />} />
           
-          {/* ✅ NEW: Cutting Masters Management */}
+          {/* Cutting Masters Management */}
           <Route path="cutting-masters" element={<CuttingMasters />} />
           <Route path="cutting-masters/add" element={<AddCuttingMaster />} />
           <Route path="cutting-masters/:id" element={<CuttingMasterDetails />} />
           <Route path="cutting-masters/edit/:id" element={<EditCuttingMaster />} />
           
-          {/* ✅ NEW: Store Keepers Management */}
+          {/* Store Keepers Management */}
           <Route path="store-keepers" element={<StoreKeepers />} />
           <Route path="store-keepers/add" element={<AddStoreKeeper />} />
           <Route path="store-keepers/:id" element={<StoreKeeperDetails />} />
@@ -243,11 +242,10 @@ export default function AppRouter() {
           {/* Shop Keeper */}
           <Route path="shopkeeper" element={<ShopKeeper />} />
           
-          {/* Banking */}
-          <Route path="banking/overview" element={<BankingPlaceholder title="Admin Banking Overview" />} />
-          <Route path="banking/income" element={<BankingPlaceholder title="Income Tracker" />} />
-          <Route path="banking/expense" element={<BankingPlaceholder title="Expense Tracker" />} />
-          <Route path="banking/transactions" element={<BankingPlaceholder title="Transactions" />} />
+          {/* ✅ BANKING - ONLY 3 MAIN PAGES */}
+          <Route path="banking/overview" element={<BankingOverview />} />
+          <Route path="banking/income" element={<IncomePage />} />
+          <Route path="banking/expense" element={<ExpensePage />} />
           
           {/* Reports */}
           <Route path="reports/sales" element={<ReportsPlaceholder title="Sales Report" />} />
@@ -274,31 +272,25 @@ export default function AppRouter() {
         >
           <Route path="dashboard" element={<StoreKeeperDashboard />} />
           
-          {/* Orders Management - Store Keeper can manage orders */}
+          {/* Orders Management */}
           <Route path="orders" element={<Orders />} />
           <Route path="orders/new" element={<NewOrder />} />
           <Route path="orders/:id" element={<OrderDetails />} />
           <Route path="orders/edit/:id" element={<EditOrder />} />
           
-          {/* Garment Management - ✅ ADD EDIT GARMENT ROUTE HERE FOR STORE KEEPER */}
+          {/* Garment Management */}
           <Route path="garments/:id" element={<GarmentDetails />} />
-          <Route path="garments/edit/:id" element={<EditGarment />} /> {/* ✅ NEW ROUTE */}
+          <Route path="garments/edit/:id" element={<EditGarment />} />
           
-          {/* Work Management - Store Keeper can view all works */}
+          {/* Work Management */}
           <Route path="works" element={<WorkPage />} />
           <Route path="works/:id" element={<WorkPage />} />
           
-          {/* Tailors Management - Store Keeper can view and add tailors */}
+          {/* Tailors Management */}
           <Route path="tailors" element={<Tailors />} />
           <Route path="tailors/add" element={<AddTailor />} />
           <Route path="tailors/:id" element={<TailorDetails />} />
           <Route path="tailors/edit/:id" element={<EditTailor />} />
-          
-          {/* ✅ Store Keepers - Store Keeper cannot manage other store keepers */}
-          {/* ❌ No routes for store-keepers here */}
-          
-          {/* ✅ Cutting Masters - Store Keeper cannot manage cutting masters */}
-          {/* ❌ No routes for cutting-masters here */}
           
           {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
@@ -318,12 +310,12 @@ export default function AppRouter() {
           <Route path="add-customer" element={<AddCustomer />} />
           <Route path="shopkeeper" element={<ShopKeeper />} />
           
-          {/* Banking - Limited access for Store Keeper */}
-          <Route path="banking/overview" element={<BankingPlaceholder title="Store Keeper Banking Overview" />} />
-          <Route path="banking/inventory" element={<BankingPlaceholder title="Inventory Management" />} />
-          <Route path="banking/daily-sales" element={<BankingPlaceholder title="Daily Sales" />} />
+          {/* ✅ BANKING - ONLY 3 MAIN PAGES FOR STORE KEEPER */}
+          <Route path="banking/overview" element={<BankingOverview />} />
+          <Route path="banking/income" element={<IncomePage />} />
+          <Route path="banking/expense" element={<ExpensePage />} />
           
-          {/* Reports - Limited access for Store Keeper */}
+          {/* Reports - Limited access */}
           <Route path="reports/sales" element={<ReportsPlaceholder title="Sales Report" />} />
           <Route path="reports/inventory" element={<ReportsPlaceholder title="Inventory Report" />} />
           <Route path="reports/production" element={<ReportsPlaceholder title="Production Report" />} />
@@ -343,36 +335,31 @@ export default function AppRouter() {
         >
           <Route path="dashboard" element={<CuttingMasterDashboard />} />
           
-          {/* Orders - Cutting Master can view orders but not edit */}
+          {/* Orders - View only */}
           <Route path="orders" element={<Orders />} />
           <Route path="orders/:id" element={<OrderDetails />} />
           
-          {/* Garment Details - Cutting Master can view garment details but NOT edit */}
+          {/* Garment Details - View only */}
           <Route path="garments/:id" element={<GarmentDetails />} />
-          {/* ❌ NO EDIT GARMENT ROUTE FOR CUTTING MASTER */}
           
-          {/* Work Management - Cutting Master can see and update their work */}
+          {/* Work Management - Full access to update status */}
           <Route path="works" element={<WorkPage />} />
           <Route path="works/:id" element={<WorkPage />} />
           
-          {/* Tailors - Cutting Master can view tailors and update leave status */}
+          {/* Tailors - View only */}
           <Route path="tailors" element={<Tailors />} />
           <Route path="tailors/:id" element={<TailorDetails />} />
-          
-          {/* ✅ Store Keepers - Cutting Master cannot view store keepers */}
-          {/* ❌ No routes for store-keepers here */}
-          
-          {/* ✅ Cutting Masters - Cutting Master cannot view other cutting masters */}
-          {/* ❌ No routes for cutting-masters here */}
           
           {/* Work Section (Legacy) */}
           <Route path="work" element={<Work />} />
           
-          {/* Measurement - Cutting Master can view only */}
+          {/* Measurement - View only */}
           <Route path="measurements" element={<Measurements />} />
           <Route path="measurements/:id" element={<TemplateDetails />} />
           
           <Route path="products" element={<Products />} />
+          
+          {/* ❌ NO BANKING ACCESS FOR CUTTING MASTER */}
           
           {/* Notifications */}
           <Route path="notifications" element={<Notifications />} />

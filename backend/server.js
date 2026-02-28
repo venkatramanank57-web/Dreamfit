@@ -1,3 +1,4 @@
+// backend/server.js
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
@@ -17,6 +18,9 @@ import itemRoutes from "./routes/item.routes.js";
 import sizeTemplateRoutes from "./routes/sizeTemplate.routes.js";
 import sizeFieldRoutes from "./routes/sizeField.routes.js";
 
+// ✅ CUSTOMER SIZE PROFILE ROUTES
+import customerSizeRoutes from "./routes/customerSize.routes.js";
+
 // ✅ ORDER MANAGEMENT ROUTES
 import orderRoutes from "./routes/order.routes.js";
 import garmentRoutes from "./routes/garment.routes.js";
@@ -28,11 +32,14 @@ import tailorRoutes from "./routes/tailor.routes.js";
 // ✅ NOTIFICATION ROUTES
 import notificationRoutes from "./routes/notification.routes.js";
 
-// ✅ NEW: CUTTING MASTER & STORE KEEPER ROUTES
+// ✅ CUTTING MASTER & STORE KEEPER ROUTES
 import cuttingMasterRoutes from "./routes/cuttingMaster.routes.js";
 import storeKeeperRoutes from "./routes/storeKeeper.routes.js";
 
-// ✅ IMPORT ERROR HANDLING MIDDLEWARE
+// ✅ NEW: BANKING / TRANSACTION ROUTES
+import transactionRoutes from "./routes/transaction.routes.js";
+
+// ✅ IMPORT ERROR HANDLING MIDDLEWARE - FIXED PATH
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
 // Load env variables
@@ -90,7 +97,7 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("combined"));
 }
 
-// ==================== ✅ FIXED RATE LIMITING ====================
+// ==================== RATE LIMITING ====================
 // Skip rate limiting in development or set higher limits
 if (process.env.NODE_ENV === "production") {
   // Production: Stricter but still reasonable limits
@@ -110,15 +117,6 @@ if (process.env.NODE_ENV === "production") {
 } else {
   // Development: Very high limits or disabled to avoid 429 errors
   console.log("🔧 Development mode - Rate limiting DISABLED to prevent 429 errors");
-  // Optional: You can still apply a very high limit if needed
-  // const devLimiter = rateLimit({
-  //   windowMs: 60 * 1000, // 1 minute
-  //   max: 10000, // 10000 requests per minute
-  //   message: "Too many requests",
-  //   standardHeaders: true,
-  //   legacyHeaders: false,
-  // });
-  // app.use("/api/", devLimiter);
 }
 
 // Body parser
@@ -145,6 +143,7 @@ app.get("/", (req, res) => {
       items: "/api/items",
       sizeTemplates: "/api/size-templates",
       sizeFields: "/api/size-fields",
+      customerSize: "/api/customer-size",
       orders: "/api/orders",
       garments: "/api/garments",
       works: "/api/works",
@@ -152,6 +151,7 @@ app.get("/", (req, res) => {
       cuttingMasters: "/api/cutting-masters",
       storeKeepers: "/api/store-keepers",
       notifications: "/api/notifications",
+      transactions: "/api/transactions",
     }
   });
 });
@@ -192,6 +192,9 @@ app.use("/api/size-templates", sizeTemplateRoutes);
 // 📐 SIZE FIELD ROUTES - Protected
 app.use("/api/size-fields", sizeFieldRoutes);
 
+// ✅ NEW: CUSTOMER SIZE PROFILE ROUTES - Protected
+app.use("/api/customer-size", customerSizeRoutes);
+
 // 📦 ORDER MANAGEMENT ROUTES - Protected
 app.use("/api/orders", orderRoutes);
 app.use("/api/garments", garmentRoutes);
@@ -203,11 +206,14 @@ app.use("/api/tailors", tailorRoutes);
 // 🔔 NOTIFICATION ROUTES - Protected
 app.use("/api/notifications", notificationRoutes);
 
-// ✅ NEW: CUTTING MASTER ROUTES - Protected
+// ✅ CUTTING MASTER ROUTES - Protected
 app.use("/api/cutting-masters", cuttingMasterRoutes);
 
-// ✅ NEW: STORE KEEPER ROUTES - Protected
+// ✅ STORE KEEPER ROUTES - Protected
 app.use("/api/store-keepers", storeKeeperRoutes);
+
+// ✅ NEW: BANKING / TRANSACTION ROUTES - Protected
+app.use("/api/transactions", transactionRoutes);
 
 // ==================== ERROR HANDLING MIDDLEWARE ====================
 // ⚠️ IMPORTANT: These must be LAST after all routes!
@@ -326,6 +332,20 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 GET  /api/size-fields           - Get all size fields`);
   console.log(`   👑 POST /api/size-fields           - Create size field (Admin only)`);
   
+  // CUSTOMER SIZE PROFILE ROUTES
+  console.log(`\n📏 CUSTOMER SIZE PROFILE ROUTES:`);
+  console.log(`   🔒 GET    /api/customer-size/customer/:customerId        - Get all profiles for a customer`);
+  console.log(`   🔒 GET    /api/customer-size/customer/:customerId/stats  - Get profile statistics`);
+  console.log(`   🔒 POST   /api/customer-size                             - Create new size profile`);
+  console.log(`   🔒 POST   /api/customer-size/bulk                        - Bulk create profiles (Admin only)`);
+  console.log(`   🔒 GET    /api/customer-size/recent                      - Get recently used profiles`);
+  console.log(`   🔒 GET    /api/customer-size/old                         - Get profiles >3 months old`);
+  console.log(`   🔒 GET    /api/customer-size/:id                         - Get single profile by ID`);
+  console.log(`   🔒 PUT    /api/customer-size/:id/measurements            - Update measurements with history`);
+  console.log(`   🔒 PATCH  /api/customer-size/:id/use                     - Mark profile as used`);
+  console.log(`   🔒 GET    /api/customer-size/:id/history                 - Get measurement change history`);
+  console.log(`   🔒 DELETE /api/customer-size/:id                         - Soft delete profile (Admin only)`);
+  
   // ORDER MANAGEMENT ROUTES
   console.log(`\n📦 ORDER MANAGEMENT ROUTES:`);
   
@@ -367,7 +387,7 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 PATCH  /api/tailors/:id/leave    - Update leave status`);
   console.log(`   🔒 DEL    /api/tailors/:id          - Delete tailor`);
 
-  // ✅ NEW: CUTTING MASTER ROUTES
+  // ✅ CUTTING MASTER ROUTES
   console.log(`\n✂️ CUTTING MASTER ROUTES:`);
   console.log(`   🔒 POST   /api/cutting-masters      - Create new cutting master`);
   console.log(`   🔒 GET    /api/cutting-masters/stats - Get cutting master statistics`);
@@ -376,7 +396,7 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 PUT    /api/cutting-masters/:id  - Update cutting master`);
   console.log(`   🔒 DEL    /api/cutting-masters/:id  - Delete cutting master`);
 
-  // ✅ NEW: STORE KEEPER ROUTES
+  // ✅ STORE KEEPER ROUTES
   console.log(`\n🏪 STORE KEEPER ROUTES:`);
   console.log(`   🔒 POST   /api/store-keepers        - Create new store keeper`);
   console.log(`   🔒 GET    /api/store-keepers/stats  - Get store keeper statistics`);
@@ -384,6 +404,13 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 GET    /api/store-keepers/:id    - Get store keeper by ID`);
   console.log(`   🔒 PUT    /api/store-keepers/:id    - Update store keeper`);
   console.log(`   🔒 DEL    /api/store-keepers/:id    - Delete store keeper`);
+
+  // ✅ NEW: BANKING / TRANSACTION ROUTES
+  console.log(`\n💰 BANKING / TRANSACTION ROUTES:`);
+  console.log(`   🔒 GET    /api/transactions           - Get all transactions (with filters)`);
+  console.log(`   🔒 GET    /api/transactions/summary   - Get transaction summary`);
+  console.log(`   🔒 POST   /api/transactions           - Create new transaction (income/expense)`);
+  console.log(`   🔒 DELETE /api/transactions/:id       - Delete transaction (Admin only)`);
   
   // Notification Routes
   console.log(`\n   🔔 NOTIFICATION ROUTES:`);
@@ -392,7 +419,7 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 PATCH  /api/notifications/mark-all-read - Mark all as read`);
   
   console.log("-".repeat(60));
-  console.log(`\n📊 TOTAL ENDPOINTS: 80+`);
+  console.log(`\n📊 TOTAL ENDPOINTS: 95+`);
   console.log("=".repeat(60) + "\n");
 });
 

@@ -7,7 +7,8 @@ import {
   Calendar, Clock, CheckSquare, BarChart3, FileText, Truck,
   HelpCircle, BookOpen, Award, Gift, CreditCard, Shield,
   Flag, Target, TrendingUp, UserPlus, UserCheck, UserX,
-  HardHat, ClipboardList // ✅ New icons for Cutting Master and Store Keeper
+  HardHat, ClipboardList, Wallet, IndianRupee, Download, Filter,
+  PieChart, Activity, DollarSign, Receipt, Banknote, PiggyBank
 } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../features/auth/authSlice";
@@ -41,7 +42,7 @@ export default function MainLayout() {
   // Store Keeper: Everything EXCEPT Staff & Settings (including FULL Banking access)
   // Cutting Master: Dashboard, Works, Tailors ONLY (NO Measurements)
 
-  // ✅ FIX 1: Banking access - Admin AND Store Keeper (FULL access for Store Keeper)
+  // ✅ Banking access - Admin AND Store Keeper (FULL access for Store Keeper)
   const canViewBanking = isAdmin || isStoreKeeper;
 
   // Customers access - Admin and Store Keeper only
@@ -62,7 +63,7 @@ export default function MainLayout() {
   // Works access - Everyone can see
   const canViewWorks = true;
 
-  // ✅ FIX 2: Measurement access - Admin and Store Keeper ONLY (NO Cutting Master)
+  // Measurement access - Admin and Store Keeper ONLY (NO Cutting Master)
   const canViewMeasurement = isAdmin || isStoreKeeper;
 
   // Tailors access - Everyone can see
@@ -74,10 +75,10 @@ export default function MainLayout() {
   // Settings access - Admin only
   const canViewSettings = isAdmin;
 
-  // ✅ NEW: Cutting Master Management - Admin only
+  // Cutting Master Management - Admin only
   const canViewCuttingMasters = isAdmin;
 
-  // ✅ NEW: Store Keeper Management - Admin only
+  // Store Keeper Management - Admin only
   const canViewStoreKeepers = isAdmin;
 
   // Current active link style check
@@ -94,6 +95,74 @@ export default function MainLayout() {
   const rolePath = user?.role === "ADMIN" ? "admin" : 
                    user?.role === "STORE_KEEPER" ? "storekeeper" : 
                    "cuttingmaster";
+
+  // ✅ COMPLETE BANKING SUB-ITEMS - FULL access for Store Keeper
+  const bankingItems = [
+    { 
+      id: 'overview', 
+      label: 'Overview', 
+      icon: Wallet, 
+      path: `/${rolePath}/banking/overview`,
+      description: 'Banking dashboard with summary'
+    },
+    { 
+      id: 'income', 
+      label: 'Income', 
+      icon: TrendingUp, 
+      path: `/${rolePath}/banking/income`,
+      description: 'Track all income transactions'
+    },
+    { 
+      id: 'expense', 
+      label: 'Expenses', 
+      icon: Receipt, 
+      path: `/${rolePath}/banking/expense`,
+      description: 'Manage expenses'
+    },
+    // { 
+    //   id: 'transactions', 
+    //   label: 'All Transactions', 
+    //   icon: FileText, 
+    //   path: `/${rolePath}/banking/transactions`,
+    //   description: 'View all financial transactions'
+    // },
+    // { 
+    //   id: 'hand-cash', 
+    //   label: 'Hand Cash', 
+    //   icon: Banknote, 
+    //   path: `/${rolePath}/banking/hand-cash`,
+    //   description: 'Physical cash management'
+    // },
+    // { 
+    //   id: 'bank', 
+    //   label: 'Bank Account', 
+    //   icon: Landmark, 
+    //   path: `/${rolePath}/banking/bank`,
+    //   description: 'Bank transactions'
+    // },
+    // { 
+    //   id: 'reports', 
+    //   label: 'Financial Reports', 
+    //   icon: PieChart, 
+    //   path: `/${rolePath}/banking/reports`,
+    //   description: 'Financial analytics'
+    // }
+  ];
+
+  // Reports sub-items - Store Keeper gets limited reports
+  const reportsItems = [
+    { id: 'sales', label: 'Sales Report', icon: TrendingUp, path: `/${rolePath}/reports/sales` },
+    { id: 'production', label: 'Production Report', icon: Briefcase, path: `/${rolePath}/reports/production` },
+    { id: 'financial', label: 'Financial Report', icon: Landmark, path: `/${rolePath}/reports/financial` },
+    ...(isAdmin ? [
+      { id: 'staff-performance', label: 'Staff Performance', icon: Award, path: `/${rolePath}/reports/staff-performance` },
+      { id: 'customer-analytics', label: 'Customer Analytics', icon: Users, path: `/${rolePath}/reports/customer-analytics` },
+    ] : []),
+    ...(isStoreKeeper ? [
+      { id: 'inventory-report', label: 'Inventory Report', icon: Package, path: `/${rolePath}/reports/inventory` },
+      { id: 'daily-sales', label: 'Daily Sales', icon: DollarSign, path: `/${rolePath}/reports/daily-sales` },
+    ] : []),
+  ];
 
   // Navigation items configuration based on role
   const getNavigationItems = () => {
@@ -138,7 +207,7 @@ export default function MainLayout() {
         description: 'Manage tailor profiles and assignments'
       },
       
-      // ✅ NEW: Cutting Masters - Admin only
+      // Cutting Masters - Admin only
       { 
         id: 'cutting-masters', 
         icon: HardHat, 
@@ -148,7 +217,7 @@ export default function MainLayout() {
         description: 'Manage cutting masters'
       },
       
-      // ✅ NEW: Store Keepers - Admin only
+      // Store Keepers - Admin only
       { 
         id: 'store-keepers', 
         icon: Store, 
@@ -188,7 +257,7 @@ export default function MainLayout() {
         description: 'Customer management'
       },
       
-      // Banking - Admin and Store Keeper both can see (Dropdown) - FULL access for Store Keeper
+      // Banking - Admin and Store Keeper both can see (Dropdown) - FULL access
       { 
         id: 'banking', 
         icon: Landmark, 
@@ -196,7 +265,7 @@ export default function MainLayout() {
         path: '#', 
         show: canViewBanking, 
         isDropdown: true,
-        description: 'Financial management'
+        description: 'Complete financial management'
       },
       
       // Reports - Admin and Store Keeper
@@ -251,30 +320,8 @@ export default function MainLayout() {
   const navigationItems = getNavigationItems();
   const hasNoResults = filteredNavItems.length === 0 && searchQuery.trim() !== '';
 
-  // ✅ UPDATED: Banking sub-items - FULL access for Store Keeper (same as Admin)
-  const bankingItems = [
-    { id: 'overview', label: 'Overview', icon: CreditCard, path: `/${rolePath}/banking/overview` },
-    ...(isAdmin || isStoreKeeper ? [ // Store Keeper gets full banking access
-      { id: 'income', label: 'Income', icon: TrendingUp, path: `/${rolePath}/banking/income` },
-      { id: 'expense', label: 'Expenses', icon: CreditCard, path: `/${rolePath}/banking/expense` },
-      { id: 'transactions', label: 'Transactions', icon: FileText, path: `/${rolePath}/banking/transactions` },
-    ] : []),
-    // No separate inventory/daily-sales for Store Keeper - they get full access
-  ];
-
-  // Reports sub-items - Store Keeper gets limited reports
-  const reportsItems = [
-    { id: 'sales', label: 'Sales Report', icon: TrendingUp, path: `/${rolePath}/reports/sales` },
-    { id: 'production', label: 'Production Report', icon: Briefcase, path: `/${rolePath}/reports/production` },
-    ...(isAdmin ? [
-      { id: 'staff-performance', label: 'Staff Performance', icon: Award, path: `/${rolePath}/reports/staff-performance` },
-      { id: 'financial', label: 'Financial Report', icon: Landmark, path: `/${rolePath}/reports/financial` },
-      { id: 'customer-analytics', label: 'Customer Analytics', icon: Users, path: `/${rolePath}/reports/customer-analytics` },
-    ] : []),
-    ...(isStoreKeeper ? [
-      { id: 'inventory-report', label: 'Inventory Report', icon: Package, path: `/${rolePath}/reports/inventory` },
-    ] : []),
-  ];
+  // Check if any banking sub-item is active
+  const isBankingActive = bankingItems.some(item => location.pathname.includes(item.id));
 
   return (
     <div className="flex h-screen bg-[#F1F5F9] overflow-hidden font-sans">
@@ -374,7 +421,7 @@ export default function MainLayout() {
                         if (item.id === 'reports') setReportsOpen(!reportsOpen);
                       }}
                       className={`w-full nav-link flex justify-between items-center ${
-                        (item.id === 'banking' && bankingOpen) || 
+                        (item.id === 'banking' && (bankingOpen || isBankingActive)) || 
                         (item.id === 'reports' && reportsOpen) ? 'text-white' : ''
                       }`}
                       title={item.description}
@@ -383,26 +430,30 @@ export default function MainLayout() {
                         <item.icon size={19} /> 
                         <span>{item.label}</span>
                       </div>
-                      {(item.id === 'banking' && bankingOpen) || 
+                      {(item.id === 'banking' && (bankingOpen || isBankingActive)) || 
                        (item.id === 'reports' && reportsOpen) ? 
                         <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                     </button>
                     
-                    {/* Banking Dropdown - FULL ACCESS for Store Keeper */}
-                    {item.id === 'banking' && bankingOpen && (
+                    {/* ✅ BANKING DROPDOWN - FULL ACCESS for Store Keeper */}
+                    {item.id === 'banking' && (bankingOpen || isBankingActive) && (
                       <div className="ml-9 mt-1 space-y-1 border-l border-slate-700 pl-4 py-1">
                         {bankingItems.map(subItem => (
                           <Link 
                             key={subItem.id}
                             to={subItem.path} 
-                            className={`flex items-center gap-2 py-2 text-sm transition-colors font-medium ${
+                            className={`flex items-center gap-2 py-2 text-sm transition-colors font-medium group ${
                               location.pathname.includes(subItem.id)
                                 ? 'text-blue-400'
                                 : 'text-slate-500 hover:text-blue-400'
                             }`}
+                            title={subItem.description}
                           >
-                            <subItem.icon size={14} />
+                            <subItem.icon size={14} className="group-hover:scale-110 transition-transform" />
                             {subItem.label}
+                            {location.pathname.includes(subItem.id) && (
+                              <span className="ml-auto w-1.5 h-1.5 bg-blue-400 rounded-full"></span>
+                            )}
                           </Link>
                         ))}
                       </div>
@@ -415,13 +466,13 @@ export default function MainLayout() {
                           <Link 
                             key={subItem.id}
                             to={subItem.path} 
-                            className={`flex items-center gap-2 py-2 text-sm transition-colors font-medium ${
+                            className={`flex items-center gap-2 py-2 text-sm transition-colors font-medium group ${
                               location.pathname.includes(subItem.id)
                                 ? 'text-blue-400'
                                 : 'text-slate-500 hover:text-blue-400'
                             }`}
                           >
-                            <subItem.icon size={14} />
+                            <subItem.icon size={14} className="group-hover:scale-110 transition-transform" />
                             {subItem.label}
                           </Link>
                         ))}
@@ -437,6 +488,9 @@ export default function MainLayout() {
                   >
                     <item.icon size={19} /> 
                     <span>{item.label}</span>
+                    {isActive(item.path) && (
+                      <span className="ml-auto w-1.5 h-1.5 bg-white rounded-full"></span>
+                    )}
                   </Link>
                 )}
               </div>
@@ -444,7 +498,7 @@ export default function MainLayout() {
           )}
         </nav>
 
-        {/* QUICK STATS AT BOTTOM (Optional) */}
+        {/* QUICK STATS AT BOTTOM */}
         <div className="px-4 py-3 border-t border-slate-800 bg-[#0F172A]">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <div className="flex items-center gap-1">
@@ -456,6 +510,13 @@ export default function MainLayout() {
               <span>{new Date().toLocaleDateString()}</span>
             </div>
           </div>
+          {/* Quick Banking Summary (visible if banking is active) */}
+          {isBankingActive && (
+            <div className="mt-2 pt-2 border-t border-slate-800 text-xs text-blue-400 flex items-center gap-1">
+              <IndianRupee size={10} />
+              <span>Banking Module Active</span>
+            </div>
+          )}
         </div>
 
         {/* SIGN OUT AT BOTTOM */}
@@ -479,6 +540,13 @@ export default function MainLayout() {
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">
               {user?.role?.replace('_', ' ')} Control Panel
             </h2>
+            {/* Show Banking indicator if on banking page */}
+            {location.pathname.includes('banking') && (
+              <div className="ml-4 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold flex items-center gap-1">
+                <Landmark size={12} />
+                <span>Banking Module</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             {/* Quick Actions */}

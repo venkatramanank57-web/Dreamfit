@@ -15,6 +15,7 @@
     "seed:category": "node seed/category.seed.js",
     "seed:item": "node seed/item.seed.js",
     "seed:tailors": "node seed/tailor.seed.js",
+    "seed:transaction": "node seed/transaction.seed.js",
     "seed:all": "node seed/sizeField.seed.js && node seed/templates.seed.js && node seed/order.seed.js"
   },
   "keywords": [],

@@ -16,6 +16,7 @@ import { fetchAllCategories } from "../../../features/category/categorySlice";
 import { fetchItems } from "../../../features/item/itemSlice";
 import { fetchAllSizeFields } from "../../../features/sizeField/sizeFieldSlice";
 import { fetchAllTemplates } from "../../../features/sizeTemplate/sizeTemplateSlice";
+import { fetchAllFabrics } from "../../../features/fabric/fabricSlice"; // ✅ Import fabric slice
 import showToast from "../../../utils/toast";
 
 export default function GarmentForm({ onClose, onSave, editingGarment }) {
@@ -25,6 +26,7 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
   const { items } = useSelector((state) => state.item);
   const { fields } = useSelector((state) => state.sizeField);
   const { templates } = useSelector((state) => state.sizeTemplate);
+  const { fabrics } = useSelector((state) => state.fabric); // ✅ Get fabrics from Redux
   const { user } = useSelector((state) => state.auth);
   const { currentCustomer } = useSelector((state) => state.customer);
 
@@ -51,6 +53,11 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       min: "",
       max: "",
     },
+    // ✅ NEW: Fabric related fields
+    fabricSource: "customer", // "customer" or "shop"
+    selectedFabric: "",
+    fabricMeters: "",
+    fabricPrice: 0, // Calculated automatically
   });
 
   const [selectedFields, setSelectedFields] = useState({});
@@ -67,6 +74,7 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
     dispatch(fetchAllCategories());
     dispatch(fetchAllSizeFields());
     dispatch(fetchAllTemplates({ page: 1, search: "" }));
+    dispatch(fetchAllFabrics()); // ✅ Load fabrics
   }, [dispatch]);
 
   // Load items when category changes
@@ -75,6 +83,49 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       dispatch(fetchItems(formData.category));
     }
   }, [dispatch, formData.category]);
+
+  // ✅ NEW: Auto-fill price range when item is selected
+  useEffect(() => {
+    if (formData.item) {
+      const selectedItem = items?.find(item => item._id === formData.item);
+      if (selectedItem?.priceRange) {
+        setFormData(prev => ({
+          ...prev,
+          priceRange: {
+            min: selectedItem.priceRange.min || "",
+            max: selectedItem.priceRange.max || "",
+          }
+        }));
+        console.log("💰 Auto-filled price from item:", selectedItem.priceRange);
+      }
+    }
+  }, [formData.item, items]);
+
+  // ✅ NEW: Calculate fabric price when fabric or meters change
+  useEffect(() => {
+    if (formData.fabricSource === "shop" && formData.selectedFabric && formData.fabricMeters) {
+      const selectedFabric = fabrics?.find(f => f._id === formData.selectedFabric);
+      if (selectedFabric) {
+        const pricePerMeter = selectedFabric.pricePerMeter || 0;
+        const meters = parseFloat(formData.fabricMeters) || 0;
+        const fabricPrice = pricePerMeter * meters;
+        
+        setFormData(prev => ({
+          ...prev,
+          fabricPrice: fabricPrice
+        }));
+        
+        console.log(`💰 Fabric price calculated: ${meters}m × ₹${pricePerMeter} = ₹${fabricPrice}`);
+      }
+    } else if (formData.fabricSource === "customer") {
+      setFormData(prev => ({
+        ...prev,
+        fabricPrice: 0,
+        selectedFabric: "",
+        fabricMeters: ""
+      }));
+    }
+  }, [formData.fabricSource, formData.selectedFabric, formData.fabricMeters, fabrics]);
 
   // Load template measurements when template changes
   useEffect(() => {
@@ -114,13 +165,18 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
         measurementTemplate: editingGarment.measurementTemplate?._id || editingGarment.measurementTemplate || "",
         measurementSource: editingGarment.measurementSource || "template",
         measurements: editingGarment.measurements || [],
-        studioImages: editingGarment.referenceImages || [], // ✅ FIX: Use referenceImages from backend
-        customerProvidedImages: editingGarment.customerImages || [], // ✅ FIX: Use customerImages from backend
+        studioImages: editingGarment.referenceImages || [],
+        customerProvidedImages: editingGarment.customerImages || [],
         customerClothImages: editingGarment.customerClothImages || [],
         additionalInfo: editingGarment.additionalInfo || "",
         estimatedDelivery: editingGarment.estimatedDelivery?.split("T")[0] || "",
         priority: editingGarment.priority || "normal",
         priceRange: editingGarment.priceRange || { min: "", max: "" },
+        // ✅ Load fabric data if exists
+        fabricSource: editingGarment.fabricSource || "customer",
+        selectedFabric: editingGarment.selectedFabric || "",
+        fabricMeters: editingGarment.fabricMeters || "",
+        fabricPrice: editingGarment.fabricPrice || 0,
       });
 
       // Set preview for existing images
@@ -311,6 +367,18 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
     }));
   };
 
+  // ✅ Calculate total prices for display
+  const getTotalPrices = () => {
+    const itemMin = parseFloat(formData.priceRange.min) || 0;
+    const itemMax = parseFloat(formData.priceRange.max) || 0;
+    const fabricPrice = formData.fabricPrice || 0;
+    
+    return {
+      totalMin: itemMin + fabricPrice,
+      totalMax: itemMax + fabricPrice,
+    };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -352,6 +420,20 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       return;
     }
 
+    // ✅ Validate fabric fields if shop provided
+    if (formData.fabricSource === "shop") {
+      if (!formData.selectedFabric) {
+        showToast.error("Please select a fabric");
+        setLoading(false);
+        return;
+      }
+      if (!formData.fabricMeters || parseFloat(formData.fabricMeters) <= 0) {
+        showToast.error("Please enter valid fabric meters");
+        setLoading(false);
+        return;
+      }
+    }
+
     // Validate measurements based on source
     if (formData.measurementSource === "template" && formData.measurements.length === 0) {
       showToast.error("Please select at least one measurement");
@@ -388,6 +470,16 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
       
       // Add price range as JSON string
       formDataToSend.append("priceRange", JSON.stringify(formData.priceRange));
+
+      // ✅ ADD FABRIC DATA
+      formDataToSend.append("fabricSource", formData.fabricSource);
+      if (formData.fabricSource === "shop") {
+        formDataToSend.append("selectedFabric", formData.selectedFabric);
+        formDataToSend.append("fabricMeters", formData.fabricMeters);
+        formDataToSend.append("fabricPrice", formData.fabricPrice);
+      } else {
+        formDataToSend.append("fabricPrice", "0");
+      }
 
       // ✅ ADD STUDIO IMAGES AS "referenceImages" (matches backend)
       if (formData.studioImages && formData.studioImages.length > 0) {
@@ -460,6 +552,8 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
     full: "Full Body Measurements",
     other: "Other Measurements",
   };
+
+  const totals = getTotalPrices();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -536,7 +630,9 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
                   >
                     <option value="">Select Item</option>
                     {items?.map((item) => (
-                      <option key={item._id} value={item._id}>{item.name}</option>
+                      <option key={item._id} value={item._id}>
+                        {item.name} {item.priceRange ? `(₹${item.priceRange.min} - ₹${item.priceRange.max})` : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -570,6 +666,186 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
                       onChange={(e) => setFormData({ ...formData, estimatedDelivery: e.target.value })}
                       min={new Date().toISOString().split("T")[0]}
                       className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ✅ NEW: Fabric Section */}
+            <div className="bg-slate-50 rounded-xl p-4 border-l-4 border-l-blue-500">
+              <h3 className="font-black text-slate-800 mb-4 flex items-center gap-2">
+                <Scissors size={20} className="text-blue-600" />
+                Fabric Details
+              </h3>
+
+              {/* Fabric Source Selection */}
+              <div className="flex gap-4 mb-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="fabricSource"
+                    value="customer"
+                    checked={formData.fabricSource === "customer"}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      fabricSource: e.target.value,
+                      selectedFabric: "",
+                      fabricMeters: "",
+                      fabricPrice: 0
+                    })}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-sm font-medium">Customer Provided (Free)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="fabricSource"
+                    value="shop"
+                    checked={formData.fabricSource === "shop"}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      fabricSource: e.target.value 
+                    })}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-sm font-medium">Shop Provided (Chargeable)</span>
+                </label>
+              </div>
+
+              {formData.fabricSource === "shop" && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                  {/* Fabric Selection */}
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-500 mb-2">
+                      Select Fabric <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.selectedFabric}
+                      onChange={(e) => setFormData({ ...formData, selectedFabric: e.target.value })}
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    >
+                      <option value="">Choose Fabric</option>
+                      {fabrics?.map((fabric) => (
+                        <option key={fabric._id} value={fabric._id}>
+                          {fabric.name} - {fabric.color} (₹{fabric.pricePerMeter}/m)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Meters Input */}
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-500 mb-2">
+                      Meters Required <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.fabricMeters}
+                      onChange={(e) => setFormData({ ...formData, fabricMeters: e.target.value })}
+                      placeholder="e.g., 2.5"
+                      step="0.1"
+                      min="0"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  {/* Calculated Price */}
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-500 mb-2">
+                      Fabric Price
+                    </label>
+                    <div className="w-full px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 font-bold">
+                      ₹{formData.fabricPrice.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Price Range & Total Display */}
+            <div className="bg-slate-50 rounded-xl p-4">
+              <h3 className="font-black text-slate-800 mb-4">Pricing</h3>
+              
+              {/* Item Price (Auto-filled) */}
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-600 font-bold mb-1">Item Price (Auto-filled from selected item)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm text-slate-600">Min Price:</span>
+                    <span className="ml-2 font-bold text-blue-700">₹{formData.priceRange.min || 0}</span>
+                  </div>
+                  <div>
+                    <span className="text-sm text-slate-600">Max Price:</span>
+                    <span className="ml-2 font-bold text-blue-700">₹{formData.priceRange.max || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fabric Price Display */}
+              {formData.fabricSource === "shop" && formData.fabricPrice > 0 && (
+                <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-xs text-green-600 font-bold mb-1">Fabric Price</p>
+                  <div>
+                    <span className="text-sm text-slate-600">Fabric Cost:</span>
+                    <span className="ml-2 font-bold text-green-700">₹{formData.fabricPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Total Price Display */}
+              <div className="p-4 bg-purple-50 rounded-xl border-2 border-purple-300">
+                <p className="text-xs text-purple-600 font-bold mb-2">TOTAL GARMENT PRICE</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-sm text-slate-600">Min Total:</span>
+                    <span className="ml-2 text-lg font-black text-purple-700">₹{totals.totalMin}</span>
+                  </div>
+                  <div>
+                    <span className="text-sm text-slate-600">Max Total:</span>
+                    <span className="ml-2 text-lg font-black text-purple-700">₹{totals.totalMax}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-purple-500 mt-2">
+                  * Final bill will include: Tailoring (₹{formData.priceRange.min} - ₹{formData.priceRange.max}) 
+                  {formData.fabricSource === "shop" && formData.fabricPrice > 0 ? ` + Fabric (₹${formData.fabricPrice})` : ''}
+                </p>
+              </div>
+
+              {/* Price Range Inputs (Hidden but kept for form submission) */}
+              <div className="hidden">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-500 mb-2">
+                      Minimum Price (₹) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.priceRange.min}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        priceRange: { ...formData.priceRange, min: e.target.value }
+                      })}
+                      min="0"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black uppercase text-slate-500 mb-2">
+                      Maximum Price (₹) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.priceRange.max}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        priceRange: { ...formData.priceRange, max: e.target.value }
+                      })}
+                      min="0"
+                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                       required
                     />
                   </div>
@@ -892,45 +1168,6 @@ export default function GarmentForm({ onClose, onSave, editingGarment }) {
                     <span className="font-bold">Important:</span> Upload photos of the actual cloth/design given by customer. 
                     This helps in matching color, fabric texture, and design details.
                   </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Price Range */}
-            <div className="bg-slate-50 rounded-xl p-4">
-              <h3 className="font-black text-slate-800 mb-4">Price Range</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-black uppercase text-slate-500 mb-2">
-                    Minimum Price (₹) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.priceRange.min}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      priceRange: { ...formData.priceRange, min: e.target.value }
-                    })}
-                    min="0"
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-black uppercase text-slate-500 mb-2">
-                    Maximum Price (₹) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.priceRange.max}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      priceRange: { ...formData.priceRange, max: e.target.value }
-                    })}
-                    min="0"
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    required
-                  />
                 </div>
               </div>
             </div>

@@ -20,6 +20,8 @@ import tailorReducer from "../features/tailor/tailorSlice";
 import cuttingMasterReducer from "../features/cuttingMaster/cuttingMasterSlice";
 import storeKeeperReducer from "../features/storeKeeper/storeKeeperSlice";
 import notificationReducer from "../features/notification/notificationSlice";
+import customerSizeReducer from "../features/customerSize/customerSizeSlice";
+import transactionReducer from '../features/transaction/transactionSlice';
 
 // Combine all reducers
 const rootReducer = combineReducers({
@@ -35,11 +37,13 @@ const rootReducer = combineReducers({
   garment: garmentReducer,
   work: workReducer,
   tailor: tailorReducer,
+  customerSize: customerSizeReducer,
   
   // ✅ NEW: Add these to the store
   cuttingMaster: cuttingMasterReducer,
   storeKeeper: storeKeeperReducer,
   notification: notificationReducer,
+   transaction: transactionReducer,
 });
 
 // Persist config
