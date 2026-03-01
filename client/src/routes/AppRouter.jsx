@@ -36,10 +36,14 @@ import EditTemplate from "../Pages/admin/Measurements/EditTemplate";
 // ✅ ORDER MANAGEMENT COMPONENTS
 import NewOrder from "../Pages/admin/order/NewOrder";
 import OrderDetails from "../Pages/admin/order/OrderDetails";
-import WorkPage from "../Pages/admin/WorkPage";
 import GarmentDetails from "../Pages/admin/garment/GarmentDetails";
 import EditOrder from "../Pages/admin/order/EditOrder";
 import EditGarment from "../Pages/admin/garment/EditGarment"; 
+
+// ✅ WORK MANAGEMENT COMPONENTS
+import WorksPage from "../Pages/works/WorksPage";
+import WorkDetailsPage from "../Pages/works/WorkDetailsPage";
+import CuttingMasterWorks from "../Pages/works/CuttingMasterWorks";
 
 // ✅ TAILOR MANAGEMENT COMPONENTS
 import Tailors from "../Pages/admin/tailor/Tailors";
@@ -59,10 +63,13 @@ import AddStoreKeeper from "../Pages/admin/storeKeeper/AddStoreKeeper";
 import StoreKeeperDetails from "../Pages/admin/storeKeeper/StoreKeeperDetails";
 import EditStoreKeeper from "../Pages/admin/storeKeeper/EditStoreKeeper";
 
-// ✅ BANKING MODULE COMPONENTS - ONLY 3 MAIN PAGES
+// ✅ BANKING MODULE COMPONENTS
 import BankingOverview from "../Pages/banking/BankingOverview";
 import IncomePage from "../Pages/banking/IncomePage";
 import ExpensePage from "../Pages/banking/ExpensePage";
+
+// ✅ NOTIFICATION COMPONENTS
+import NotificationsPage from "../Pages/notifications/NotificationsPage";
 
 // Placeholders
 const ManagerDashboard = () => (
@@ -104,12 +111,6 @@ const ReportsPlaceholder = ({ title }) => (
 const Settings = () => (
   <div className="p-8 font-black text-slate-800 uppercase italic">
     Settings - Coming Soon
-  </div>
-);
-
-const Notifications = () => (
-  <div className="p-8 font-black text-slate-800 uppercase italic">
-    Notifications Center
   </div>
 );
 
@@ -189,9 +190,9 @@ export default function AppRouter() {
           <Route path="garments/:id" element={<GarmentDetails />} />
           <Route path="garments/edit/:id" element={<EditGarment />} />
           
-          {/* Work Management */}
-          <Route path="works" element={<WorkPage />} />
-          <Route path="works/:id" element={<WorkPage />} />
+          {/* ✅ WORK MANAGEMENT - FULL ACCESS */}
+          <Route path="works" element={<WorksPage />} />
+          <Route path="works/:id" element={<WorkDetailsPage />} />
           
           {/* Tailors Management */}
           <Route path="tailors" element={<Tailors />} />
@@ -242,7 +243,7 @@ export default function AppRouter() {
           {/* Shop Keeper */}
           <Route path="shopkeeper" element={<ShopKeeper />} />
           
-          {/* ✅ BANKING - ONLY 3 MAIN PAGES */}
+          {/* ✅ BANKING MODULE */}
           <Route path="banking/overview" element={<BankingOverview />} />
           <Route path="banking/income" element={<IncomePage />} />
           <Route path="banking/expense" element={<ExpensePage />} />
@@ -258,7 +259,7 @@ export default function AppRouter() {
           <Route path="settings" element={<Settings />} />
           
           {/* Notifications */}
-          <Route path="notifications" element={<Notifications />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
 
         {/* 🛡️ STORE KEEPER ROUTES */}
@@ -282,9 +283,9 @@ export default function AppRouter() {
           <Route path="garments/:id" element={<GarmentDetails />} />
           <Route path="garments/edit/:id" element={<EditGarment />} />
           
-          {/* Work Management */}
-          <Route path="works" element={<WorkPage />} />
-          <Route path="works/:id" element={<WorkPage />} />
+          {/* ✅ WORK MANAGEMENT - FULL ACCESS (VIEW ONLY) */}
+          <Route path="works" element={<WorksPage />} />
+          <Route path="works/:id" element={<WorkDetailsPage />} />
           
           {/* Tailors Management */}
           <Route path="tailors" element={<Tailors />} />
@@ -310,7 +311,7 @@ export default function AppRouter() {
           <Route path="add-customer" element={<AddCustomer />} />
           <Route path="shopkeeper" element={<ShopKeeper />} />
           
-          {/* ✅ BANKING - ONLY 3 MAIN PAGES FOR STORE KEEPER */}
+          {/* ✅ BANKING MODULE */}
           <Route path="banking/overview" element={<BankingOverview />} />
           <Route path="banking/income" element={<IncomePage />} />
           <Route path="banking/expense" element={<ExpensePage />} />
@@ -321,7 +322,7 @@ export default function AppRouter() {
           <Route path="reports/production" element={<ReportsPlaceholder title="Production Report" />} />
           
           {/* Notifications */}
-          <Route path="notifications" element={<Notifications />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
 
         {/* 🛡️ CUTTING MASTER ROUTES (Restricted) */}
@@ -342,9 +343,9 @@ export default function AppRouter() {
           {/* Garment Details - View only */}
           <Route path="garments/:id" element={<GarmentDetails />} />
           
-          {/* Work Management - Full access to update status */}
-          <Route path="works" element={<WorkPage />} />
-          <Route path="works/:id" element={<WorkPage />} />
+          {/* ✅ WORK MANAGEMENT - CUTTING MASTER SPECIFIC */}
+          <Route path="works" element={<CuttingMasterWorks />} />
+          <Route path="works/:id" element={<WorkDetailsPage />} />
           
           {/* Tailors - View only */}
           <Route path="tailors" element={<Tailors />} />
@@ -362,7 +363,7 @@ export default function AppRouter() {
           {/* ❌ NO BANKING ACCESS FOR CUTTING MASTER */}
           
           {/* Notifications */}
-          <Route path="notifications" element={<Notifications />} />
+          <Route path="notifications" element={<NotificationsPage />} />
         </Route>
 
         {/* 🚨 404 REDIRECT */}

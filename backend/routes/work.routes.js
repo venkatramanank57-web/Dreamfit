@@ -1,57 +1,62 @@
-import express from "express";
+// routes/work.routes.js
+import express from 'express';
+import { protect, authorize } from '../middleware/auth.middleware.js';
 import {
-  getAllWorks,
+  createWorksFromOrder,
+  getWorks,
   getWorkById,
-  updateWorkStatus,
+  acceptWork,
   assignTailor,
-  getDashboardStats
-} from "../controllers/work.controller.js";
-import { protect, authorize } from "../middleware/auth.middleware.js";
+  updateWorkStatus,
+  deleteWork,
+  getWorksByCuttingMaster,
+  getWorksByTailor,
+  getWorkStats
+} from '../controllers/work.controller.js';
 
 const router = express.Router();
-
-// Debug middleware
-router.use((req, res, next) => {
-  console.log(`📡 Work Route: ${req.method} ${req.originalUrl}`);
-  next();
-});
 
 // All routes require authentication
 router.use(protect);
 
-/**
- * @route   GET /api/works
- * @desc    Get all works with filters
- * @access  Admin, Store Keeper, Cutting Master, Tailor
- */
-router.get("/", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER", "TAILOR"), getAllWorks);
+// ===== SPECIAL ROUTES (must come BEFORE /:id) =====
 
-/**
- * @route   GET /api/works/stats
- * @desc    Get dashboard statistics
- * @access  Admin, Store Keeper, Cutting Master, Tailor
- */
-router.get("/stats", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER", "TAILOR"), getDashboardStats);
+// Create works from order (Store Keeper, Admin)
+router.post(
+  '/create-from-order/:orderId',
+  authorize('ADMIN', 'STORE_KEEPER'),
+  createWorksFromOrder
+);
 
-/**
- * @route   GET /api/works/:id
- * @desc    Get work by ID
- * @access  Admin, Store Keeper, Cutting Master, Tailor
- */
-router.get("/:id", authorize("ADMIN", "STORE_KEEPER", "CUTTING_MASTER", "TAILOR"), getWorkById);
+// ✅ Get work statistics - MUST come BEFORE /:id
+router.get('/stats', authorize('ADMIN', 'STORE_KEEPER'), getWorkStats);
 
-/**
- * @route   PATCH /api/works/:id/status
- * @desc    Update work status
- * @access  Cutting Master
- */
-router.patch("/:id/status", authorize("CUTTING_MASTER"), updateWorkStatus);
+// Get works by cutting master
+router.get('/my-works', authorize('CUTTING_MASTER'), getWorksByCuttingMaster);
 
-/**
- * @route   PATCH /api/works/:id/assign-tailor
- * @desc    Assign tailor to work
- * @access  Cutting Master
- */
-router.patch("/:id/assign-tailor", authorize("CUTTING_MASTER"), assignTailor);
+// Get works by tailor
+router.get('/tailor-works', authorize('TAILOR'), getWorksByTailor);
+
+// ===== MAIN ROUTES =====
+
+// Get all works (Admin, Store Keeper)
+router.get('/', authorize('ADMIN', 'STORE_KEEPER'), getWorks);
+
+// ===== DYNAMIC ROUTES (with :id) - MUST come LAST =====
+
+// Get work by ID (All roles)
+router.get('/:id', getWorkById);
+
+// Accept work (Cutting Master only)
+router.patch('/:id/accept', authorize('CUTTING_MASTER'), acceptWork);
+
+// Assign tailor (Cutting Master only)
+router.patch('/:id/assign-tailor', authorize('CUTTING_MASTER'), assignTailor);
+
+// Update work status (Cutting Master only)
+router.patch('/:id/status', authorize('CUTTING_MASTER'), updateWorkStatus);
+
+// Delete work (Admin only)
+router.delete('/:id', authorize('ADMIN'), deleteWork);
 
 export default router;

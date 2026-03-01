@@ -24,13 +24,13 @@ import customerSizeRoutes from "./routes/customerSize.routes.js";
 // ✅ ORDER MANAGEMENT ROUTES
 import orderRoutes from "./routes/order.routes.js";
 import garmentRoutes from "./routes/garment.routes.js";
-import workRoutes from "./routes/work.routes.js";
+import workRoutes from "./routes/work.routes.js";           // ✅ Work routes
 
 // ✅ TAILOR MANAGEMENT ROUTES
 import tailorRoutes from "./routes/tailor.routes.js";
 
 // ✅ NOTIFICATION ROUTES
-import notificationRoutes from "./routes/notification.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";  // ✅ Notification routes
 
 // ✅ CUTTING MASTER & STORE KEEPER ROUTES
 import cuttingMasterRoutes from "./routes/cuttingMaster.routes.js";
@@ -39,7 +39,7 @@ import storeKeeperRoutes from "./routes/storeKeeper.routes.js";
 // ✅ NEW: BANKING / TRANSACTION ROUTES
 import transactionRoutes from "./routes/transaction.routes.js";
 
-// ✅ IMPORT ERROR HANDLING MIDDLEWARE - FIXED PATH
+// ✅ IMPORT ERROR HANDLING MIDDLEWARE
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 
 // Load env variables
@@ -192,19 +192,19 @@ app.use("/api/size-templates", sizeTemplateRoutes);
 // 📐 SIZE FIELD ROUTES - Protected
 app.use("/api/size-fields", sizeFieldRoutes);
 
-// ✅ NEW: CUSTOMER SIZE PROFILE ROUTES - Protected
+// ✅ CUSTOMER SIZE PROFILE ROUTES - Protected
 app.use("/api/customer-size", customerSizeRoutes);
 
 // 📦 ORDER MANAGEMENT ROUTES - Protected
 app.use("/api/orders", orderRoutes);
 app.use("/api/garments", garmentRoutes);
-app.use("/api/works", workRoutes);
+app.use("/api/works", workRoutes);                    // ✅ Work routes registered
 
 // ✂️ TAILOR MANAGEMENT ROUTES - Protected
 app.use("/api/tailors", tailorRoutes);
 
 // 🔔 NOTIFICATION ROUTES - Protected
-app.use("/api/notifications", notificationRoutes);
+app.use("/api/notifications", notificationRoutes);    // ✅ Notification routes registered
 
 // ✅ CUTTING MASTER ROUTES - Protected
 app.use("/api/cutting-masters", cuttingMasterRoutes);
@@ -212,7 +212,7 @@ app.use("/api/cutting-masters", cuttingMasterRoutes);
 // ✅ STORE KEEPER ROUTES - Protected
 app.use("/api/store-keepers", storeKeeperRoutes);
 
-// ✅ NEW: BANKING / TRANSACTION ROUTES - Protected
+// ✅ BANKING / TRANSACTION ROUTES - Protected
 app.use("/api/transactions", transactionRoutes);
 
 // ==================== ERROR HANDLING MIDDLEWARE ====================
@@ -369,13 +369,18 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 DEL    /api/garments/:id/images  - Delete garment image`);
   console.log(`   🔒 DEL    /api/garments/:id         - Delete garment`);
   
-  // Work Routes
+  // ✅ WORK ROUTES - Detailed
   console.log(`\n   ⚙️ WORK ROUTES:`);
-  console.log(`   🔒 GET    /api/works                - Get all works (with filters)`);
-  console.log(`   🔒 GET    /api/works/stats          - Get work statistics`);
-  console.log(`   🔒 GET    /api/works/:id            - Get work by ID`);
-  console.log(`   🔒 PATCH  /api/works/:id/status     - Update work status`);
-  console.log(`   🔒 PATCH  /api/works/:id/assign-tailor - Assign tailor`);
+  console.log(`   🔒 POST   /api/works/create-from-order/:orderId - Create works from order`);
+  console.log(`   🔒 GET    /api/works/stats                      - Get work statistics`);
+  console.log(`   🔒 GET    /api/works/my-works                   - Get works by cutting master`);
+  console.log(`   🔒 GET    /api/works/tailor-works               - Get works by tailor`);
+  console.log(`   🔒 GET    /api/works                            - Get all works (with filters)`);
+  console.log(`   🔒 GET    /api/works/:id                        - Get work by ID`);
+  console.log(`   🔒 PATCH  /api/works/:id/accept                 - Accept work (Cutting Master)`);
+  console.log(`   🔒 PATCH  /api/works/:id/assign-tailor          - Assign tailor (Cutting Master)`);
+  console.log(`   🔒 PATCH  /api/works/:id/status                 - Update work status (Cutting Master)`);
+  console.log(`   🔒 DELETE /api/works/:id                        - Delete work (Admin only)`);
   
   // ✂️ TAILOR MANAGEMENT ROUTES
   console.log(`\n✂️ TAILOR MANAGEMENT ROUTES:`);
@@ -405,21 +410,24 @@ const server = app.listen(PORT, () => {
   console.log(`   🔒 PUT    /api/store-keepers/:id    - Update store keeper`);
   console.log(`   🔒 DEL    /api/store-keepers/:id    - Delete store keeper`);
 
-  // ✅ NEW: BANKING / TRANSACTION ROUTES
+  // ✅ NOTIFICATION ROUTES
+  console.log(`\n🔔 NOTIFICATION ROUTES:`);
+  console.log(`   🔒 GET    /api/notifications/unread-count - Get unread count`);
+  console.log(`   🔒 GET    /api/notifications              - Get user notifications`);
+  console.log(`   🔒 GET    /api/notifications/:id          - Get notification by ID`);
+  console.log(`   🔒 PATCH  /api/notifications/:id/read     - Mark as read`);
+  console.log(`   🔒 PATCH  /api/notifications/mark-all-read - Mark all as read`);
+  console.log(`   🔒 DELETE /api/notifications/:id          - Delete notification`);
+
+  // ✅ BANKING / TRANSACTION ROUTES
   console.log(`\n💰 BANKING / TRANSACTION ROUTES:`);
   console.log(`   🔒 GET    /api/transactions           - Get all transactions (with filters)`);
   console.log(`   🔒 GET    /api/transactions/summary   - Get transaction summary`);
   console.log(`   🔒 POST   /api/transactions           - Create new transaction (income/expense)`);
   console.log(`   🔒 DELETE /api/transactions/:id       - Delete transaction (Admin only)`);
   
-  // Notification Routes
-  console.log(`\n   🔔 NOTIFICATION ROUTES:`);
-  console.log(`   🔒 GET    /api/notifications        - Get user notifications`);
-  console.log(`   🔒 PATCH  /api/notifications/:id/read - Mark as read`);
-  console.log(`   🔒 PATCH  /api/notifications/mark-all-read - Mark all as read`);
-  
   console.log("-".repeat(60));
-  console.log(`\n📊 TOTAL ENDPOINTS: 95+`);
+  console.log(`\n📊 TOTAL ENDPOINTS: 100+`);
   console.log("=".repeat(60) + "\n");
 });
 

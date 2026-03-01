@@ -1,89 +1,149 @@
-// src/features/notification/notificationSlice.js
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import * as notificationApi from "./notificationApi";
+// features/notification/notificationSlice.js
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import * as notificationApi from './notificationApi';
+import showToast from '../../utils/toast';
 
+const initialState = {
+  notifications: [],
+  unreadCount: 0,
+  loading: false,
+  error: null,
+  pagination: {
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  }
+};
+
+// Async Thunks
 export const fetchNotifications = createAsyncThunk(
-  "notification/fetchAll",
-  async (_, { rejectWithValue }) => {
+  'notification/fetchNotifications',
+  async (filters = {}, { rejectWithValue }) => {
     try {
-      const response = await notificationApi.getNotificationsApi();
-      return response;
+      const response = await notificationApi.getNotifications(filters);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch notifications");
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch notifications');
     }
   }
 );
 
-export const markAsRead = createAsyncThunk(
-  "notification/markAsRead",
-  async (id, { rejectWithValue }) => {
+export const fetchUnreadCount = createAsyncThunk(
+  'notification/fetchUnreadCount',
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await notificationApi.markAsReadApi(id);
-      return { id, ...response };
+      const response = await notificationApi.getUnreadCount();
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to mark as read");
+      return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
-export const markAllAsRead = createAsyncThunk(
-  "notification/markAllAsRead",
-  async (_, { rejectWithValue }) => {
+export const markNotificationAsRead = createAsyncThunk(
+  'notification/markNotificationAsRead',
+  async (id, { rejectWithValue, dispatch }) => {
     try {
-      const response = await notificationApi.markAllAsReadApi();
-      return response;
+      const response = await notificationApi.markAsRead(id);
+      showToast.success('Notification marked as read');
+      dispatch(fetchUnreadCount());
+      return { id, ...response.data };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || "Failed to mark all as read");
+      showToast.error(error.response?.data?.message);
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+export const markAllNotificationsAsRead = createAsyncThunk(
+  'notification/markAllNotificationsAsRead',
+  async (_, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await notificationApi.markAllAsRead();
+      showToast.success('All notifications marked as read');
+      dispatch(fetchUnreadCount());
+      return response.data;
+    } catch (error) {
+      showToast.error(error.response?.data?.message);
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+export const deleteNotificationById = createAsyncThunk(
+  'notification/deleteNotificationById',
+  async (id, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await notificationApi.deleteNotification(id);
+      showToast.success('Notification deleted');
+      dispatch(fetchUnreadCount());
+      return id;
+    } catch (error) {
+      showToast.error(error.response?.data?.message);
+      return rejectWithValue(error.response?.data?.message);
     }
   }
 );
 
 const notificationSlice = createSlice({
-  name: "notification",
-  initialState: {
-    notifications: [],
-    unreadCount: 0,
-    loading: false,
-    error: null
-  },
+  name: 'notification',
+  initialState,
   reducers: {
     clearNotifications: (state) => {
       state.notifications = [];
       state.unreadCount = 0;
-    },
-    addNotification: (state, action) => {
-      state.notifications.unshift(action.payload);
-      state.unreadCount += 1;
     }
   },
   extraReducers: (builder) => {
     builder
+      // Fetch Notifications
       .addCase(fetchNotifications.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchNotifications.fulfilled, (state, action) => {
         state.loading = false;
-        state.notifications = action.payload.notifications;
-        state.unreadCount = action.payload.unreadCount;
+        state.notifications = action.payload.notifications || [];
+        state.pagination = action.payload.pagination || initialState.pagination;
       })
       .addCase(fetchNotifications.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-      .addCase(markAsRead.fulfilled, (state, action) => {
+      
+      // Fetch Unread Count
+      .addCase(fetchUnreadCount.fulfilled, (state, action) => {
+        state.unreadCount = action.payload?.unreadCount || 0;
+      })
+      
+      // Mark as Read
+      .addCase(markNotificationAsRead.fulfilled, (state, action) => {
         const notification = state.notifications.find(n => n._id === action.payload.id);
         if (notification) {
           notification.isRead = true;
-          state.unreadCount = Math.max(0, state.unreadCount - 1);
         }
       })
-      .addCase(markAllAsRead.fulfilled, (state) => {
+      
+      // Mark All as Read
+      .addCase(markAllNotificationsAsRead.fulfilled, (state) => {
         state.notifications.forEach(n => { n.isRead = true; });
         state.unreadCount = 0;
+      })
+      
+      // Delete Notification
+      .addCase(deleteNotificationById.fulfilled, (state, action) => {
+        state.notifications = state.notifications.filter(n => n._id !== action.payload);
       });
   }
 });
 
-export const { clearNotifications, addNotification } = notificationSlice.actions;
+export const { clearNotifications } = notificationSlice.actions;
+
+// Selectors
+export const selectNotifications = (state) => state.notification?.notifications || [];
+export const selectUnreadCount = (state) => state.notification?.unreadCount || 0;
+export const selectNotificationLoading = (state) => state.notification?.loading || false;
+export const selectNotificationPagination = (state) => state.notification?.pagination || {};
+
 export default notificationSlice.reducer;

@@ -1,34 +1,38 @@
-import express from "express";
+// routes/notification.routes.js
+import express from 'express';
+import { protect } from '../middleware/auth.middleware.js';
 import {
-  getUserNotifications,
+  getNotifications,      // ✅ Changed from getUserNotifications
+  getUnreadCount,
   markAsRead,
-  markAllAsRead
-} from "../controllers/notification.controller.js";
-import { protect } from "../middleware/auth.middleware.js";
+  markAllAsRead,
+  deleteNotification,
+  getNotificationById
+} from '../controllers/notification.controller.js';
 
 const router = express.Router();
 
+// All routes require authentication
 router.use(protect);
 
-/**
- * @route   GET /api/notifications
- * @desc    Get user notifications
- * @access  Private
- */
-router.get("/", getUserNotifications);
+// ==================== NOTIFICATION ROUTES ====================
 
-/**
- * @route   PATCH /api/notifications/:id/read
- * @desc    Mark notification as read
- * @access  Private
- */
-router.patch("/:id/read", markAsRead);
+// Get unread count
+router.get('/unread-count', getUnreadCount);
 
-/**
- * @route   PATCH /api/notifications/mark-all-read
- * @desc    Mark all notifications as read
- * @access  Private
- */
-router.patch("/mark-all-read", markAllAsRead);
+// Get user notifications (with pagination)
+router.get('/', getNotifications);  // ✅ This matches the export
+
+// Get notification by ID
+router.get('/:id', getNotificationById);
+
+// Mark notification as read
+router.patch('/:id/read', markAsRead);
+
+// Mark all notifications as read
+router.patch('/mark-all-read', markAllAsRead);
+
+// Delete notification
+router.delete('/:id', deleteNotification);
 
 export default router;

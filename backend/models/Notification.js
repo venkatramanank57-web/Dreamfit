@@ -1,47 +1,60 @@
-import mongoose from "mongoose";
+// models/Notification.js
+import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
-  },
-  role: {
+  type: {
     type: String,
-    enum: ["ADMIN", "STORE_KEEPER", "CUTTING_MASTER", "TAILOR"],
+    enum: [
+      'work-assigned', 
+      'work-accepted', 
+      'work-status-update', 
+      'order-confirmed',
+      'tailor-assigned'
+    ],
     required: true
   },
-  orderId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Order"
+  
+  recipient: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User',
+    required: true 
   },
-  workId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Work"
+  
+  title: {
+    type: String,
+    required: true
   },
+  
   message: {
     type: String,
     required: true
   },
-  type: {
-    type: String,
-    enum: ["new-work", "status-update", "ready-to-deliver", "order-completed"],
-    required: true
+  
+  reference: {
+    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+    workId: { type: mongoose.Schema.Types.ObjectId, ref: 'Work' },
+    garmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Garment' }
   },
+  
   isRead: {
     type: Boolean,
     default: false
   },
-  metadata: {
-    fromRole: String,
-    previousStatus: String,
-    newStatus: String
+  
+  priority: {
+    type: String,
+    enum: ['low', 'normal', 'high'],
+    default: 'normal'
+  },
+  
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
-}, { timestamps: true });
+});
 
 // Index for faster queries
-notificationSchema.index({ userId: 1, isRead: 1 });
+notificationSchema.index({ recipient: 1, isRead: 1 });
 notificationSchema.index({ createdAt: -1 });
 
-const Notification = mongoose.model("Notification", notificationSchema);
-export default Notification;
+export default mongoose.model('Notification', notificationSchema);

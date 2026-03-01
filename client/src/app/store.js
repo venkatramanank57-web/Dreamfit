@@ -23,6 +23,7 @@ import notificationReducer from "../features/notification/notificationSlice";
 import customerSizeReducer from "../features/customerSize/customerSizeSlice";
 import transactionReducer from '../features/transaction/transactionSlice';
 
+
 // Combine all reducers
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -44,6 +45,7 @@ const rootReducer = combineReducers({
   storeKeeper: storeKeeperReducer,
   notification: notificationReducer,
    transaction: transactionReducer,
+    notification: notificationReducer,
 });
 
 // Persist config
