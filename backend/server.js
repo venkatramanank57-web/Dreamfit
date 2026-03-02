@@ -60,6 +60,7 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "http://localhost:5000",
   "https://dreamfit.vercel.app",
+  "https://dreamfit-six.vercel.app/",
 ];
 
 app.use(
