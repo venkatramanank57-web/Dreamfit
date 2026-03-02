@@ -1,9 +1,9 @@
 // features/auth/authAPI.js
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api"; // Your backend URL
+const API_URL = "https://dreamfit-1.onrender.com/api";
 
-// export const loginRequest = async (email, password) => {
+
 //   try {
 //     // Use fetch instead of axios interceptor for login (no token needed)
 //     const response = await fetch(`${API_URL}/auth/login`, {

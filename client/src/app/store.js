@@ -45,7 +45,7 @@ const rootReducer = combineReducers({
   storeKeeper: storeKeeperReducer,
   notification: notificationReducer,
    transaction: transactionReducer,
-    notification: notificationReducer,
+
 });
 
 // Persist config
