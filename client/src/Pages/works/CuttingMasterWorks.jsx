@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   Briefcase,
   RefreshCw,
-  Search,
   Clock,
   CheckCircle,
   Scissors,
@@ -19,11 +18,13 @@ import {
 import { 
   fetchMyWorks,
   acceptWorkById,
+  updateWorkStatusById,
   selectMyWorks,
   selectWorkPagination,
   selectWorkLoading,
   setFilters
 } from '../../features/work/workSlice';
+import UpdateStatusModal from '../../components/works/UpdateStatusModal';
 import showToast from '../../utils/toast';
 
 export default function CuttingMasterWorks() {
@@ -33,9 +34,12 @@ export default function CuttingMasterWorks() {
   const works = useSelector(selectMyWorks);
   const pagination = useSelector(selectWorkPagination);
   const loading = useSelector(selectWorkLoading);
-  const { user } = useSelector((state) => state.auth); // ✅ Get user for debugging
+  const { user } = useSelector((state) => state.auth);
 
+  // State for filter and modals
   const [filter, setFilter] = useState('all');
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedWorkForStatus, setSelectedWorkForStatus] = useState(null);
   const [debugInfo, setDebugInfo] = useState({
     apiCalled: false,
     response: null,
@@ -43,7 +47,7 @@ export default function CuttingMasterWorks() {
     worksCount: 0
   });
 
-  // ✅ DEBUG: Log user info on component mount
+  // Debug logging
   useEffect(() => {
     console.log('🔍 ===== CUTTING MASTER WORKS PAGE LOADED =====');
     console.log('👤 Current user from Redux:', user);
@@ -54,7 +58,6 @@ export default function CuttingMasterWorks() {
     console.log('🔄 Loading state:', loading);
   }, []);
 
-  // ✅ DEBUG: Log when works change
   useEffect(() => {
     console.log('📦 Works updated:', works);
     console.log('📊 Count:', works?.length || 0);
@@ -65,27 +68,28 @@ export default function CuttingMasterWorks() {
     }
   }, [works]);
 
-  // ✅ DEBUG: Log when pagination changes
   useEffect(() => {
     console.log('📄 Pagination updated:', pagination);
   }, [pagination]);
 
-  // ✅ DEBUG: Log when loading changes
   useEffect(() => {
     console.log('🔄 Loading state:', loading);
   }, [loading]);
 
+  // Load works when filter changes
   useEffect(() => {
     console.log(`🎯 Filter changed to: ${filter}, loading works...`);
     loadWorks();
-  }, [filter, dispatch]);
+  }, [filter]);
 
   const loadWorks = async () => {
-    console.log(`🚀 Calling fetchMyWorks with filter: ${filter === 'all' ? 'all' : filter}`);
+    console.log(`🚀 Calling fetchMyWorks with filter: ${filter}`);
     setDebugInfo(prev => ({ ...prev, apiCalled: true, error: null }));
     
     try {
-      const result = await dispatch(fetchMyWorks({ status: filter !== 'all' ? filter : '' })).unwrap();
+      // ✅ FIXED: Don't send status filter when 'all' is selected
+      const params = filter !== 'all' ? { status: filter } : {};
+      const result = await dispatch(fetchMyWorks(params)).unwrap();
       console.log('✅ fetchMyWorks successful!');
       console.log('📦 Result data:', result);
       setDebugInfo(prev => ({ ...prev, response: result, error: null }));
@@ -110,6 +114,10 @@ export default function CuttingMasterWorks() {
       dispatch(acceptWorkById(id)).then(() => {
         console.log(`✅ Work ${id} accepted, reloading works...`);
         loadWorks();
+        showToast.success('Work accepted successfully');
+      }).catch((error) => {
+        console.error('❌ Accept work failed:', error);
+        showToast.error('Failed to accept work');
       });
     }
   };
@@ -117,6 +125,35 @@ export default function CuttingMasterWorks() {
   const handleViewWork = (id) => {
     console.log(`👁️ View work clicked for ID: ${id}`);
     navigate(`/cuttingmaster/works/${id}`);
+  };
+
+  const handleUpdateStatus = (work) => {
+    console.log(`🔄 Update status clicked for work:`, work);
+    setSelectedWorkForStatus(work);
+    setShowStatusModal(true);
+  };
+
+  const handleStatusUpdate = async (newStatus, notes) => {
+    console.log(`📤 Updating work ${selectedWorkForStatus?._id} to status: ${newStatus}`);
+    console.log(`📝 Notes: ${notes}`);
+    
+    if (selectedWorkForStatus) {
+      try {
+        await dispatch(updateWorkStatusById({ 
+          id: selectedWorkForStatus._id, 
+          status: newStatus,
+          notes 
+        })).unwrap();
+        
+        setShowStatusModal(false);
+        setSelectedWorkForStatus(null);
+        await loadWorks();
+        showToast.success(`Status updated to ${newStatus.replace(/-/g, ' ')}`);
+      } catch (error) {
+        console.error('❌ Status update failed:', error);
+        showToast.error('Failed to update status');
+      }
+    }
   };
 
   const getStatusColor = (status) => {
@@ -149,11 +186,11 @@ export default function CuttingMasterWorks() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
-      {/* ✅ DEBUG PANEL - Remove in production */}
+      {/* Debug Panel */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mb-6 p-4 bg-slate-800 text-white rounded-xl text-xs font-mono">
           <details>
-            <summary className="cursor-pointer font-bold text-sm mb-2">🔧 Debug Info (Click to expand)</summary>
+            <summary className="cursor-pointer font-bold text-sm mb-2">🔧 Debug Info</summary>
             <div className="mt-2 space-y-1">
               <div>👤 User ID: {user?._id || user?.id || 'Not logged in'}</div>
               <div>🎭 User Role: {user?.role || 'Unknown'}</div>
@@ -163,9 +200,6 @@ export default function CuttingMasterWorks() {
               <div>🎯 Current Filter: {filter}</div>
               <div>📡 API Called: {debugInfo.apiCalled ? 'Yes' : 'No'}</div>
               {debugInfo.error && <div>❌ Error: {debugInfo.error}</div>}
-              {debugInfo.response && (
-                <div>📥 Response: <pre className="text-xs mt-1 bg-slate-900 p-2 rounded">{JSON.stringify(debugInfo.response, null, 2)}</pre></div>
-              )}
             </div>
           </details>
         </div>
@@ -181,6 +215,7 @@ export default function CuttingMasterWorks() {
           <button
             onClick={handleRefresh}
             className="p-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all"
+            title="Refresh"
           >
             <RefreshCw size={20} className={loading ? 'animate-spin text-blue-600' : 'text-slate-600'} />
           </button>
@@ -219,6 +254,22 @@ export default function CuttingMasterWorks() {
             }`}
           >
             Cutting
+          </button>
+          <button
+            onClick={() => setFilter('cutting-completed')}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              filter === 'cutting-completed' ? 'bg-indigo-500 text-white' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Completed
+          </button>
+          <button
+            onClick={() => setFilter('ready-to-deliver')}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              filter === 'ready-to-deliver' ? 'bg-green-500 text-white' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Ready
           </button>
         </div>
       </div>
@@ -268,34 +319,56 @@ export default function CuttingMasterWorks() {
                   )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
+                  {/* View Details Button */}
                   <button
                     onClick={() => handleViewWork(work._id)}
-                    className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                    className="w-full px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
                   >
                     <Eye size={16} />
-                    View
+                    View Details
                   </button>
-                  
-                  {work.status === 'pending' && (
-                    <button
-                      onClick={() => handleAcceptWork(work._id)}
-                      className="flex-1 px-4 py-2 bg-green-50 text-green-600 rounded-lg font-medium hover:bg-green-100 transition-all flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle size={16} />
-                      Accept
-                    </button>
-                  )}
 
-                  {work.status !== 'pending' && !work.tailor && (
-                    <button
-                      onClick={() => navigate(`/cuttingmaster/works/${work._id}?assign=true`)}
-                      className="flex-1 px-4 py-2 bg-purple-50 text-purple-600 rounded-lg font-medium hover:bg-purple-100 transition-all flex items-center justify-center gap-2"
-                    >
-                      <UserPlus size={16} />
-                      Assign
-                    </button>
-                  )}
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    {work.status === 'pending' && (
+                      <button
+                        onClick={() => handleAcceptWork(work._id)}
+                        className="flex-1 px-4 py-2 bg-green-50 text-green-600 rounded-lg font-medium hover:bg-green-100 transition-all flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle size={16} />
+                        Accept
+                      </button>
+                    )}
+
+                    {work.status === 'accepted' && !work.tailor && (
+                      <button
+                        onClick={() => navigate(`/cuttingmaster/works/${work._id}?assign=true`)}
+                        className="flex-1 px-4 py-2 bg-purple-50 text-purple-600 rounded-lg font-medium hover:bg-purple-100 transition-all flex items-center justify-center gap-2"
+                      >
+                        <UserPlus size={16} />
+                        Assign
+                      </button>
+                    )}
+
+                    {work.status !== 'pending' && 
+                     work.status !== 'ready-to-deliver' && 
+                     work.status !== 'accepted' && (
+                      <button
+                        onClick={() => handleUpdateStatus(work)}
+                        className="flex-1 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Clock size={16} />
+                        Update
+                      </button>
+                    )}
+
+                    {work.status === 'ready-to-deliver' && (
+                      <div className="flex-1 px-4 py-2 bg-green-100 text-green-700 rounded-lg font-medium text-center">
+                        ✓ Ready
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -336,6 +409,18 @@ export default function CuttingMasterWorks() {
             <ChevronRight size={18} />
           </button>
         </div>
+      )}
+
+      {/* Update Status Modal */}
+      {showStatusModal && selectedWorkForStatus && (
+        <UpdateStatusModal
+          work={selectedWorkForStatus}
+          onClose={() => {
+            setShowStatusModal(false);
+            setSelectedWorkForStatus(null);
+          }}
+          onUpdate={handleStatusUpdate}
+        />
       )}
     </div>
   );

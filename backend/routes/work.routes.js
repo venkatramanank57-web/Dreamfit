@@ -11,7 +11,8 @@ import {
   deleteWork,
   getWorksByCuttingMaster,
   getWorksByTailor,
-  getWorkStats
+  getWorkStats,
+  assignCuttingMaster
 } from '../controllers/work.controller.js';
 
 const router = express.Router();
@@ -19,44 +20,133 @@ const router = express.Router();
 // All routes require authentication
 router.use(protect);
 
-// ===== SPECIAL ROUTES (must come BEFORE /:id) =====
+// ============================================
+// SPECIAL ROUTES (must come BEFORE /:id)
+// ============================================
 
-// Create works from order (Store Keeper, Admin)
+/**
+ * @route   POST /api/works/create-from-order/:orderId
+ * @desc    Create works for each garment in an order
+ * @access  Admin, Store Keeper
+ */
 router.post(
   '/create-from-order/:orderId',
   authorize('ADMIN', 'STORE_KEEPER'),
   createWorksFromOrder
 );
 
-// ✅ Get work statistics - MUST come BEFORE /:id
-router.get('/stats', authorize('ADMIN', 'STORE_KEEPER'), getWorkStats);
+/**
+ * @route   PATCH /api/works/:id/assign-cutting-master
+ * @desc    Assign a cutting master to a work (manual assignment)
+ * @access  Admin, Store Keeper, Cutting Master
+ */
+router.patch(
+  '/:id/assign-cutting-master', 
+  authorize('ADMIN', 'STORE_KEEPER', 'CUTTING_MASTER'), 
+  assignCuttingMaster
+);
 
-// Get works by cutting master
-router.get('/my-works', authorize('CUTTING_MASTER'), getWorksByCuttingMaster);
+/**
+ * @route   GET /api/works/stats
+ * @desc    Get work statistics for dashboard
+ * @access  Admin, Store Keeper
+ */
+router.get(
+  '/stats', 
+  authorize('ADMIN', 'STORE_KEEPER'), 
+  getWorkStats
+);
 
-// Get works by tailor
-router.get('/tailor-works', authorize('TAILOR'), getWorksByTailor);
+/**
+ * @route   GET /api/works/my-works
+ * @desc    Get works assigned to the logged-in cutting master
+ * @access  Cutting Master
+ */
+router.get(
+  '/my-works', 
+  authorize('CUTTING_MASTER'), 
+  getWorksByCuttingMaster
+);
 
-// ===== MAIN ROUTES =====
+/**
+ * @route   GET /api/works/tailor-works
+ * @desc    Get works assigned to the logged-in tailor
+ * @access  Tailor
+ */
+router.get(
+  '/tailor-works', 
+  authorize('TAILOR'), 
+  getWorksByTailor
+);
 
-// Get all works (Admin, Store Keeper)
-router.get('/', authorize('ADMIN', 'STORE_KEEPER'), getWorks);
+// ============================================
+// MAIN ROUTES
+// ============================================
 
-// ===== DYNAMIC ROUTES (with :id) - MUST come LAST =====
+/**
+ * @route   GET /api/works
+ * @desc    Get all works with filters (pagination, status, etc.)
+ * @access  Admin, Store Keeper
+ */
+router.get(
+  '/', 
+  authorize('ADMIN', 'STORE_KEEPER'), 
+  getWorks
+);
 
-// Get work by ID (All roles)
+// ============================================
+// DYNAMIC ROUTES (with :id) - MUST come LAST
+// ============================================
+
+/**
+ * @route   GET /api/works/:id
+ * @desc    Get work by ID
+ * @access  All authenticated users
+ */
 router.get('/:id', getWorkById);
 
-// Accept work (Cutting Master only)
-router.patch('/:id/accept', authorize('CUTTING_MASTER'), acceptWork);
+/**
+ * @route   PATCH /api/works/:id/accept
+ * @desc    Accept a work (changes from pending to accepted)
+ * @access  Cutting Master only
+ */
+router.patch(
+  '/:id/accept', 
+  authorize('CUTTING_MASTER'), 
+  acceptWork
+);
 
-// Assign tailor (Cutting Master only)
-router.patch('/:id/assign-tailor', authorize('CUTTING_MASTER'), assignTailor);
+/**
+ * @route   PATCH /api/works/:id/assign-tailor
+ * @desc    Assign a tailor to a work
+ * @access  Cutting Master only
+ */
+router.patch(
+  '/:id/assign-tailor', 
+  authorize('CUTTING_MASTER'), 
+  assignTailor
+);
 
-// Update work status (Cutting Master only)
-router.patch('/:id/status', authorize('CUTTING_MASTER'), updateWorkStatus);
+/**
+ * @route   PATCH /api/works/:id/status
+ * @desc    Update work status (cutting-started, cutting-completed, etc.)
+ * @access  Cutting Master only
+ */
+router.patch(
+  '/:id/status', 
+  authorize('CUTTING_MASTER'), 
+  updateWorkStatus
+);
 
-// Delete work (Admin only)
-router.delete('/:id', authorize('ADMIN'), deleteWork);
+/**
+ * @route   DELETE /api/works/:id
+ * @desc    Soft delete a work
+ * @access  Admin only
+ */
+router.delete(
+  '/:id', 
+  authorize('ADMIN'), 
+  deleteWork
+);
 
 export default router;
