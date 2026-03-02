@@ -65,8 +65,8 @@ import EditStoreKeeper from "../Pages/admin/storeKeeper/EditStoreKeeper";
 
 // ✅ BANKING MODULE COMPONENTS
 import BankingOverview from "../Pages/Banking/BankingOverview";
-import IncomePage from "../Pages/banking/IncomePage";
-import ExpensePage from "../Pages/banking/ExpensePage";
+import IncomePage from "../Pages/Banking/IncomePage";
+import ExpensePage from "../Pages/Banking/ExpensePage";
 
 // ✅ NOTIFICATION COMPONENTS
 import NotificationsPage from "../Pages/notifications/NotificationsPage";
